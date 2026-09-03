@@ -1,0 +1,35 @@
+# Normalize line endings. Without this, files checked out on Windows get CRLF and then
+# fail inside the Linux dev container: a shell script with CRLF dies with
+# "bad interpreter: /usr/bin/env bash^M", and CRLF in a Dockerfile ENTRYPOINT or a
+# compose command produces equally opaque failures.
+* text=auto eol=lf
+
+# Files that must be LF regardless of platform.
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+*.java      text eol=lf
+*.sql       text eol=lf
+*.xml       text eol=lf
+*.properties text eol=lf
+*.md        text eol=lf
+Dockerfile  text eol=lf
+*.Dockerfile text eol=lf
+.gitattributes text eol=lf
+.gitignore  text eol=lf
+
+# Windows-only helpers keep CRLF.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binary: never touch.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.pdf       binary
+*.jar       binary
+*.zip       binary
