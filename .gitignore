@@ -1,0 +1,41 @@
+# Build
+target/
+build/
+out/
+bin/
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+*.war
+*.class
+
+# Maven / Gradle
+.mvn/timing.properties
+.gradle/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Observability / load test output
+k6-results/
+*.log
+logs/
+
+# Docker volumes
+.data/
