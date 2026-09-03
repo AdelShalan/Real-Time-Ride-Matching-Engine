@@ -23,8 +23,9 @@ Docker-in-Docker was rejected.
 
 ## One-time host setup
 
-Current state on this machine: Podman Desktop and the VS Code Dev Containers extension are
-installed; **WSL 2 and the Podman engine are not**. Steps 1 and 2 are still outstanding.
+Verified working on 2026-09-03 with Podman 6.0.2 (rootless, WSL backend, 4 CPU / 8 GiB) and
+Docker Compose v5.5.1: Postgres 16.15, Redis 7 (`GEOSEARCH` confirmed), and Kafka 3.8.1 all healthy,
+with the full topic topology created and a produce/consume round trip passing.
 
 ### 1. WSL 2
 
@@ -46,8 +47,11 @@ wsl --status
 Podman Desktop is the GUI; it does not include the engine. Install the CLI:
 
 ```powershell
-winget install --exact --id RedHat.Podman
+winget install --exact --id RedHat.Podman --source winget
 ```
+
+`--source winget` matters: without it, winget stops to ask you to accept `msstore` source
+agreements it does not need for this package.
 
 Open a **new** terminal (PATH changes need a fresh shell), then create and start the VM:
 
@@ -60,7 +64,22 @@ podman info
 Kafka plus Postgres plus a JVM in one VM is memory-hungry; 8 GB is a realistic floor, 4 GB will
 cause the broker to be OOM-killed under load testing.
 
-### 3. Point VS Code at Podman
+### 3. A compose implementation
+
+`podman compose` is only a shim — it delegates to a real compose binary and fails with
+"looking up compose provider failed" if none is installed.
+
+```powershell
+winget install --exact --id Docker.DockerCompose --source winget
+```
+
+Compose v2 is the right choice over `podman-compose`: this project's compose file relies on
+`depends_on: condition: service_healthy` and `profiles`, both of which Compose v2 supports fully
+and the third-party `podman-compose` historically does not. Once installed, `podman compose`
+auto-detects it and points `DOCKER_HOST` at the machine socket; invoking `docker-compose` directly
+will not find Podman.
+
+### 4. Point VS Code at Podman
 
 In VS Code settings JSON (`Ctrl+Shift+P` → *Preferences: Open User Settings (JSON)*):
 
@@ -103,6 +122,27 @@ Add observability (off by default to keep startup light):
 ```bash
 podman compose -f ops/docker-compose.yml --profile observability up -d
 ```
+
+### Kafka topics
+
+The broker has `auto.create.topics.enable=false`, so a typo in a topic name fails loudly instead of
+silently creating a topic with default partitioning. Create the topology from
+[ADR-0003](adr/0003-kafka-topology-and-outbox.md):
+
+```bash
+podman exec -i ride-matching-engine-kafka-1 bash -s < ops/kafka/create-topics.sh
+```
+
+The script is idempotent (`--if-not-exists`), so re-running it after adding a topic is safe.
+
+**Run that from Git Bash, not PowerShell.** Piping a file into a container through PowerShell 5.1
+prepends a UTF-8 BOM and rewrites newlines as CRLF, which makes the shebang line fail with
+`#!/usr/bin/env: No such file or directory` and leaves stray `$'\r'` errors. Inside the dev
+container, just run `bash ops/kafka/create-topics.sh`.
+
+Also note that Git Bash rewrites container-absolute paths: `podman exec ... /opt/kafka/bin/...`
+becomes `C:/Program Files/Git/opt/kafka/...`. Prefix commands with `MSYS_NO_PATHCONV=1` when passing
+absolute paths into a container.
 
 ---
 
