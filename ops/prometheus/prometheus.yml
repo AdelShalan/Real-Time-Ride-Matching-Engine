@@ -1,0 +1,36 @@
+global:
+  # 5s matches the load-test resolution: slower scraping smooths away the latency
+  # spikes the tests exist to find.
+  scrape_interval: 5s
+  evaluation_interval: 15s
+  external_labels:
+    env: local
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Application services. Uncommented as each service lands (Phase 3 onward);
+  # Prometheus reports a target as DOWN rather than failing to start, so leaving
+  # these active before the services exist only adds noise.
+  #
+  # - job_name: location-service
+  #   metrics_path: /actuator/prometheus
+  #   static_configs:
+  #     - targets: ["location-service:8080"]
+  #
+  # - job_name: dispatch-api
+  #   metrics_path: /actuator/prometheus
+  #   static_configs:
+  #     - targets: ["dispatch-api:8080"]
+  #
+  # - job_name: matching-engine
+  #   metrics_path: /actuator/prometheus
+  #   static_configs:
+  #     - targets: ["matching-engine:8080"]
+  #
+  # - job_name: trip-service
+  #   metrics_path: /actuator/prometheus
+  #   static_configs:
+  #     - targets: ["trip-service:8080"]

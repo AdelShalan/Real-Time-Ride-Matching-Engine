@@ -1,0 +1,71 @@
+{
+  "name": "Ride-Matching Engine (Java 21)",
+
+  // Compose-based dev container: the workspace is a SIBLING of the infrastructure
+  // containers on one network, not a Docker-in-Docker host. See ADR-0007.
+  "dockerComposeFile": [
+    "../ops/docker-compose.yml",
+    "docker-compose.dev.yml"
+  ],
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+
+  // Infra that comes up with the dev container. Prometheus and Grafana are in the
+  // "observability" profile and stay down until Phase 7 to keep startup light.
+  "runServices": ["workspace", "postgres", "redis", "kafka"],
+
+  // Stop (not remove) the containers when the VS Code window closes. Named volumes
+  // survive, so Postgres data and Kafka log dirs persist across sessions. Use "none"
+  // to leave the stack running after closing the editor.
+  "shutdownAction": "stopCompose",
+
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "none",
+      "installMaven": "true",
+      "mavenVersion": "3.9.9"
+    },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack",
+        "redhat.vscode-yaml",
+        "editorconfig.editorconfig",
+        "ms-kubernetes-tools.vscode-kubernetes-tools"
+      ],
+      "settings": {
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-21",
+            "path": "/usr/local/sdkman/candidates/java/current",
+            "default": true
+          }
+        ],
+        "java.compile.nullAnalysis.mode": "automatic",
+        "java.configuration.updateBuildConfiguration": "interactive",
+        "files.eol": "\n",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+
+  // Host ports are published by the compose files so tools on Windows (psql, redis-cli,
+  // a browser) can reach the stack too. These entries just make VS Code surface them.
+  "forwardPorts": [8080, 5432, 6379, 9092, 9090, 3000],
+  "portsAttributes": {
+    "8080": { "label": "Dispatch API" },
+    "5432": { "label": "PostgreSQL" },
+    "6379": { "label": "Redis" },
+    "9092": { "label": "Kafka" },
+    "9090": { "label": "Prometheus" },
+    "3000": { "label": "Grafana" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteUser": "vscode"
+}

@@ -16,7 +16,7 @@ Kafka topology, and the load-test evidence that it holds up.
 | **Event backbone** | Apache Kafka (KRaft) |
 | **Observability** | Micrometer → Prometheus → Grafana, OpenTelemetry traces |
 | **Testing** | JUnit 5, Testcontainers, k6 load harness |
-| **Infra** | Docker Compose — one command spins up the whole stack |
+| **Infra** | Podman + Dev Containers — the host needs no JDK, Maven, or database |
 
 ---
 
@@ -245,6 +245,7 @@ Redis, Kafka, or Postgres running.
 
 ```
 ride-matching-engine/
+├── .devcontainer/               # JDK 21 + Maven sandbox (VS Code attaches here)
 ├── docs/
 │   ├── ARCHITECTURE.md          # deep system design
 │   ├── LOAD_TESTING.md          # methodology + results
@@ -313,12 +314,18 @@ drivers hold more than one active trip.
 
 ## Running It
 
+The project develops inside a **Dev Container**, so the only things needed on the host are VS Code
+and Podman — no JDK, no Maven, no database installs. Open the folder in VS Code and choose *Reopen in
+Container*.
+
+Infrastructure standalone:
+
 ```bash
-docker compose -f ops/docker-compose.yml up -d
+podman compose -f ops/docker-compose.yml up -d
 ```
 
-Brings up Postgres, Redis, Kafka (KRaft), Prometheus, Grafana, and all services. Grafana at
-`localhost:3000`, dispatch API at `localhost:8080`.
+Postgres, Redis, and Kafka (KRaft). Add `--profile observability` for Prometheus and Grafana.
+Full setup and troubleshooting: **[docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)**.
 
 *Implementation in progress — the architecture above is the contract the code is being built against.*
 
@@ -334,5 +341,6 @@ Brings up Postgres, Redis, Kafka (KRaft), Prometheus, Grafana, and all services.
 | [0004](docs/adr/0004-driver-claim-concurrency.md) | Two-layer driver claim; why not Redlock |
 | [0005](docs/adr/0005-idempotency.md) | Idempotency keys on ride creation |
 | [0006](docs/adr/0006-java21-virtual-threads.md) | Java 21 virtual threads over a reactive stack |
+| [0007](docs/adr/0007-containerized-dev-environment.md) | Dev Container on Podman; compose siblings, not Docker-in-Docker |
 
 Full design detail: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**

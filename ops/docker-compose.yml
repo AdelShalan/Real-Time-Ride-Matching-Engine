@@ -1,0 +1,130 @@
+# Infrastructure for the Real-Time Ride-Matching Engine.
+#
+# Used two ways, from one definition:
+#   1. As the base of the dev container (see .devcontainer/docker-compose.dev.yml)
+#   2. Standalone:  podman compose -f ops/docker-compose.yml up -d
+#
+# Application services are added here in later phases. Prometheus and Grafana sit
+# behind the "observability" profile so day-to-day startup stays fast:
+#   podman compose -f ops/docker-compose.yml --profile observability up -d
+
+name: ride-matching-engine
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ride
+      POSTGRES_PASSWORD: ride
+      POSTGRES_DB: ride
+      # Faster startup; this database is disposable.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ride -d ride"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    networks:
+      - ride-net
+
+  redis:
+    image: redis:7-alpine
+    # appendonly + everysec: a warm restart keeps the geo index rather than starting
+    # empty. Durability is not required here (ADR-0002) but a fast restart is convenient.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - ride-net
+
+  kafka:
+    # KRaft mode: single node, no ZooKeeper.
+    image: apache/kafka:3.8.1
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092"
+      # Two advertised listeners: "kafka:9092" for containers on ride-net,
+      # "localhost:29092" for tools running on Windows. A client that connects on the
+      # wrong one gets a metadata response pointing at an unreachable host.
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      # Single broker: everything replication-related must be 1 or the broker won't start.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      # No rebalance delay in dev: consumers should join instantly on restart.
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: "ride-matching-kraft-cluster"
+    ports:
+      - "29092:29092"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+    networks:
+      - ride-net
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["observability"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=6h"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,z
+      - promdata:/prometheus
+    networks:
+      - ride-net
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    profiles: ["observability"]
+    environment:
+      # Local-only stack; anonymous admin keeps the load-test screenshots frictionless.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_DEFAULT_THEME: "light"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro,z
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - ride-net
+
+networks:
+  ride-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  kafkadata:
+  promdata:
+  grafanadata:

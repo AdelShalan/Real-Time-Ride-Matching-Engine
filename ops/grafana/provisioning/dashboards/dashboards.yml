@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Dashboards are committed as JSON under ops/grafana/dashboards/ so the load-test
+# screenshots in docs/LOAD_TESTING.md are reproducible rather than hand-built.
+providers:
+  - name: ride-matching
+    orgId: 1
+    folder: "Ride Matching"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 15
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+      foldersFromFilesStructure: false
