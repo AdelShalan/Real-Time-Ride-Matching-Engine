@@ -1,12 +1,12 @@
-package com.ridematching.location.adapters.out.redis;
+package com.ridematching.geoindex.redis;
 
 import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.DriverLocation;
 import com.ridematching.domain.driver.DriverStatus;
 import com.ridematching.domain.driver.NearbyDriver;
 import com.ridematching.domain.geo.Coordinates;
-import com.ridematching.location.application.LocationIngestProperties;
-import com.ridematching.location.application.port.DriverLocationIndex;
+import com.ridematching.geoindex.DriverLocationIndex;
+import com.ridematching.geoindex.RedisKeys;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
 import org.springframework.data.geo.GeoResults;
@@ -40,13 +40,15 @@ import java.util.UUID;
 public class RedisDriverLocationIndex implements DriverLocationIndex {
 
     private final StringRedisTemplate redis;
+    private final RedisKeys keys;
     private final String geoKey;
     private final String seenKey;
 
-    public RedisDriverLocationIndex(StringRedisTemplate redis, LocationIngestProperties properties) {
+    public RedisDriverLocationIndex(StringRedisTemplate redis, RedisKeys keys) {
         this.redis = redis;
-        this.geoKey = "geo:drivers:{%s}".formatted(properties.getCity());
-        this.seenKey = "driver:seen:{%s}".formatted(properties.getCity());
+        this.keys = keys;
+        this.geoKey = keys.geoIndex();
+        this.seenKey = keys.lastSeen();
     }
 
     @Override
@@ -77,7 +79,7 @@ public class RedisDriverLocationIndex implements DriverLocationIndex {
 
     @Override
     public void markOnline(DriverId driverId) {
-        redis.opsForHash().put(stateKey(driverId), "status", DriverStatus.AVAILABLE.name());
+        redis.opsForHash().put(keys.driverState(driverId), "status", DriverStatus.AVAILABLE.name());
     }
 
     @Override
@@ -85,7 +87,7 @@ public class RedisDriverLocationIndex implements DriverLocationIndex {
         String member = driverId.toString();
         redis.opsForZSet().remove(geoKey, member);
         redis.opsForZSet().remove(seenKey, member);
-        redis.delete(stateKey(driverId));
+        redis.delete(keys.driverState(driverId));
     }
 
     @Override
@@ -129,7 +131,7 @@ public class RedisDriverLocationIndex implements DriverLocationIndex {
         Object[] members = stale.toArray();
         redis.opsForZSet().remove(geoKey, members);
         redis.opsForZSet().remove(seenKey, members);
-        stale.forEach(id -> redis.delete("driver:" + id + ":state"));
+        stale.forEach(id -> redis.delete(keys.driverState(id)));
         return stale.size();
     }
 
@@ -139,7 +141,4 @@ public class RedisDriverLocationIndex implements DriverLocationIndex {
         return count == null ? 0L : count;
     }
 
-    private String stateKey(DriverId driverId) {
-        return "driver:" + driverId + ":state";
-    }
 }

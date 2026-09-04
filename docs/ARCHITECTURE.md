@@ -337,7 +337,7 @@ regression in the claim path.
 | 2 | Domain model, trip state machine, unit tests ✅ |
 | 3 | Location Service: WebSocket ingestion → Redis GEO ✅ |
 | 4 | Dispatch API + idempotency + Postgres schema ✅ |
-| 5 | Matching Engine + claim protocol + concurrency tests |
+| 5 | Matching Engine + claim protocol + concurrency tests ✅ |
 | 6 | Kafka topology, outbox publisher, notification/billing consumers |
 | 7 | Prometheus + Grafana dashboards |
 | 8 | Simulator + k6 load harness, published results |

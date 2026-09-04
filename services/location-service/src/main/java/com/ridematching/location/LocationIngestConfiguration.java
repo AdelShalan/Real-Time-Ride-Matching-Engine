@@ -3,11 +3,12 @@ package com.ridematching.location;
 import tools.jackson.databind.ObjectMapper;
 import com.ridematching.location.adapters.in.ws.DriverHandshakeInterceptor;
 import com.ridematching.location.adapters.in.ws.DriverLocationWebSocketHandler;
-import com.ridematching.location.adapters.out.redis.RedisDriverLocationIndex;
+import com.ridematching.geoindex.RedisKeys;
+import com.ridematching.geoindex.redis.RedisDriverLocationIndex;
 import com.ridematching.location.application.LocationIngestProperties;
 import com.ridematching.location.application.LocationIngestService;
 import com.ridematching.location.application.StaleDriverReaper;
-import com.ridematching.location.application.port.DriverLocationIndex;
+import com.ridematching.geoindex.DriverLocationIndex;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -54,10 +55,15 @@ public class LocationIngestConfiguration implements WebSocketConfigurer, Schedul
         return Clock.systemUTC();
     }
 
+    /** The key layout is shared with the matching engine, so it comes from geoindex. */
     @Bean
-    public static DriverLocationIndex driverLocationIndex(StringRedisTemplate redis,
-                                                          LocationIngestProperties properties) {
-        return new RedisDriverLocationIndex(redis, properties);
+    public static RedisKeys redisKeys(LocationIngestProperties properties) {
+        return new RedisKeys(properties.getCity());
+    }
+
+    @Bean
+    public static DriverLocationIndex driverLocationIndex(StringRedisTemplate redis, RedisKeys keys) {
+        return new RedisDriverLocationIndex(redis, keys);
     }
 
     @Bean

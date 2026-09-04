@@ -4,7 +4,7 @@ import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.DriverLocation;
 import com.ridematching.domain.driver.NearbyDriver;
 import com.ridematching.domain.geo.Coordinates;
-import com.ridematching.location.application.port.DriverLocationIndex;
+import com.ridematching.geoindex.DriverLocationIndex;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;

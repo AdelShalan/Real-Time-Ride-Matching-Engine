@@ -103,8 +103,23 @@ guarantee as absolute.
 
 ## Verification
 
-`DriverClaimConcurrencyIT`: 200 threads held at a `CountDownLatch` are released simultaneously
-against a single `AVAILABLE` driver. Assertions:
+**Measured 2026-09-04.** `DriverClaimIT`: 200 virtual threads held at a `CountDownLatch` are
+released simultaneously against a single `AVAILABLE` driver.
+
+| Implementation | Winners out of 200 |
+|---|---|
+| Lua script (atomic check-and-set) | **1** |
+| Naive check-then-set, two round trips | **200** |
+
+The second row is the point. Replacing the script with the obvious implementation — read the
+status, then write the reservation — does not produce an occasional double-assignment that a
+retry might paper over. **Every single thread wins**, because all 200 read `AVAILABLE` before
+any of them writes `RESERVED`. Under real load that is 200 riders dispatched to one driver.
+
+This was verified by deliberately breaking the implementation and confirming the test fails, then
+restoring it. A concurrency test that has never been seen to fail is decoration.
+
+`DriverClaimIT` assertions:
 
 - exactly one thread receives a successful assignment;
 - `SELECT count(*) FROM trips WHERE driver_id = ? AND status IN ('OFFERED','ACCEPTED','IN_PROGRESS')`

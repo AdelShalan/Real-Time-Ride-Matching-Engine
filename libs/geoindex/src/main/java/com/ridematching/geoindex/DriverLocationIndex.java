@@ -1,4 +1,4 @@
-package com.ridematching.location.application.port;
+package com.ridematching.geoindex;
 
 import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.DriverLocation;

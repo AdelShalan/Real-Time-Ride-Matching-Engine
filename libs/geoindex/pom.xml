@@ -6,35 +6,38 @@
 
   <parent>
     <groupId>com.ridematching</groupId>
-    <artifactId>services</artifactId>
+    <artifactId>ride-matching-engine</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <relativePath>../pom.xml</relativePath>
+    <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>location-service</artifactId>
-  <name>location-service</name>
-  <description>WebSocket GPS ingestion into the Redis geospatial index.</description>
+  <artifactId>geoindex</artifactId>
+  <name>geoindex</name>
+  <description>Redis geospatial index and driver claim protocol, shared by the services that use them.</description>
 
-  <!-- Common dependencies and the Spring Boot repackage goal are inherited from
-       services/pom.xml. Add only what is specific to this service. -->
+  <!--
+    Exists because two services touch the same Redis key space: location-service writes the
+    index, matching-engine searches it and claims drivers in it. A service depending on
+    another service would be wrong, and duplicating the key layout in both would let a
+    one-character divergence silently split the namespace in two. This module owns it.
+  -->
   <dependencies>
-    <!-- Brings the Redis key layout, the index port and its adapter. -->
     <dependency>
       <groupId>com.ridematching</groupId>
-      <artifactId>geoindex</artifactId>
+      <artifactId>domain</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-websocket</artifactId>
-    </dependency>
 
     <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.testcontainers</groupId>
-      <!-- Renamed from "junit-jupiter" in Testcontainers 2.x. -->
       <artifactId>testcontainers-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>

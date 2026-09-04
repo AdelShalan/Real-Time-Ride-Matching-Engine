@@ -2,7 +2,7 @@ package com.ridematching.location.application;
 
 import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.DriverLocation;
-import com.ridematching.location.application.port.DriverLocationIndex;
+import com.ridematching.geoindex.DriverLocationIndex;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;

@@ -17,4 +17,15 @@
 
   <!-- Common dependencies and the Spring Boot repackage goal are inherited from
        services/pom.xml. Add only what is specific to this service. -->
+  <dependencies>
+    <!-- Searches the same index location-service writes, and claims drivers in it. -->
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>geoindex</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+  </dependencies>
 </project>

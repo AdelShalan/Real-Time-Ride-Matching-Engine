@@ -1,10 +1,10 @@
-package com.ridematching.location.adapters.out.redis;
+package com.ridematching.geoindex.redis;
 
 import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.DriverLocation;
 import com.ridematching.domain.driver.NearbyDriver;
+import com.ridematching.geoindex.RedisKeys;
 import com.ridematching.domain.geo.Coordinates;
-import com.ridematching.location.application.LocationIngestProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,7 +64,7 @@ class RedisDriverLocationIndexIT {
         redis.afterPropertiesSet();
         redis.getConnectionFactory().getConnection().serverCommands().flushDb();
 
-        index = new RedisDriverLocationIndex(redis, new LocationIngestProperties());
+        index = new RedisDriverLocationIndex(redis, new RedisKeys("test"));
     }
 
     private DriverLocation at(DriverId id, double lat, double lng, Instant when) {
@@ -158,7 +158,7 @@ class RedisDriverLocationIndexIT {
 
         assertThat(index.size()).isZero();
         assertThat(index.search(TAHRIR, 5_000, 10)).isEmpty();
-        assertThat(redis.hasKey("driver:" + driver + ":state")).isFalse();
+        assertThat(redis.hasKey(new RedisKeys("test").driverState(driver))).isFalse();
     }
 
     @Test

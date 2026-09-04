@@ -1,6 +1,6 @@
 package com.ridematching.location.application;
 
-import com.ridematching.location.application.port.DriverLocationIndex;
+import com.ridematching.geoindex.DriverLocationIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
