@@ -1,0 +1,41 @@
+# Configuration every service shares. Imported, not auto-loaded:
+#
+#   spring:
+#     config:
+#       import: "classpath:platform-defaults.yml"
+#
+# Deliberately NOT named application-common.yml — Spring Boot reads "application-<x>.yml"
+# as the profile-specific file for profile <x>, so that name would silently create a
+# phantom "common" profile. This file has a neutral name and is pulled in explicitly.
+#
+# Imported documents have LOWER precedence than the file importing them, so a service can
+# override any of this in its own application.yml.
+
+spring:
+  threads:
+    virtual:
+      # ADR-0006. One virtual thread per request; blocking code, reactive scalability.
+      enabled: true
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only what is needed: an open actuator surface is an information leak.
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  metrics:
+    tags:
+      # Resolved from each service's own application.yml.
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.ridematching: INFO

@@ -18,16 +18,16 @@
     module can stay free of any Spring inheritance. See ADR-0001.
   -->
 
+  <!--
+    libs are listed individually: they share no common dependency set (domain has none
+    at all), so an aggregator would add a file without removing duplication.
+    services do share one, so they get a parent POM of their own.
+  -->
   <modules>
     <module>libs/domain</module>
     <module>libs/events</module>
     <module>libs/platform</module>
-    <module>services/dispatch-api</module>
-    <module>services/location-service</module>
-    <module>services/matching-engine</module>
-    <module>services/trip-service</module>
-    <module>services/notification-service</module>
-    <module>services/billing-service</module>
+    <module>services</module>
   </modules>
 
   <properties>

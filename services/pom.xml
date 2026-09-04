@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.ridematching</groupId>
+    <artifactId>ride-matching-engine</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>services</artifactId>
+  <packaging>pom</packaging>
+  <name>services</name>
+  <description>Parent for deployable services: everything every service needs, declared once.</description>
+
+  <modules>
+    <module>dispatch-api</module>
+    <module>location-service</module>
+    <module>matching-engine</module>
+    <module>trip-service</module>
+    <module>notification-service</module>
+    <module>billing-service</module>
+  </modules>
+
+  <!--
+    Inherited by every service. Anything a service does NOT share belongs in its own POM:
+    Lettuce in location-service, Spring Kafka in the consumers, JPA in trip-service.
+    Only put something here when all six genuinely need it.
+  -->
+  <dependencies>
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>domain</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>events</artifactId>
+    </dependency>
+    <!-- Brings actuator, the Prometheus registry, and the shared observability
+         auto-configuration along with it. -->
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>platform</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Every service is an executable jar. Declared once here rather than six times. -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

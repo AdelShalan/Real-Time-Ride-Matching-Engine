@@ -1,30 +1,11 @@
+# Only what is specific to this service. Everything else — virtual threads, actuator
+# exposure, graceful shutdown, metric tags — comes from platform-defaults.yml, which
+# ships inside the platform module on the classpath.
 spring:
   application:
     name: dispatch-api
-  threads:
-    virtual:
-      # ADR-0006. One virtual thread per request; blocking code, reactive scalability.
-      enabled: true
+  config:
+    import: "classpath:platform-defaults.yml"
 
 server:
   port: 8080
-  shutdown: graceful
-
-management:
-  endpoints:
-    web:
-      exposure:
-        # Only what is needed: an open actuator surface is an information leak.
-        include: health,info,prometheus
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: always
-  metrics:
-    tags:
-      application: ${spring.application.name}
-
-logging:
-  level:
-    com.ridematching: INFO
