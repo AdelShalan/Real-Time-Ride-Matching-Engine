@@ -17,6 +17,10 @@ services:
       # Named volume for the Maven repo: survives rebuilds, and avoids ~500MB of
       # dependency downloads crossing the Windows <-> VM filesystem boundary on every build.
       - maven-repo:/home/vscode/.m2
+      # Podman's API socket, presented under the Docker path Testcontainers expects.
+      # This is the alternative to docker-in-docker promised in ADR-0007: containers the
+      # tests start are siblings under the same rootless engine, not a nested daemon.
+      - /run/user/1000/podman/podman.sock:/var/run/docker.sock:z
 
     # Rootless Podman maps the container's root to your host user. Because we run as
     # "vscode" (uid 1000) rather than root, writes to /workspace can fail with EACCES.
@@ -33,6 +37,14 @@ services:
       SPRING_DATA_REDIS_PORT: "6379"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       TZ: UTC
+
+      # Testcontainers talks to Podman through the mounted socket above.
+      DOCKER_HOST: unix:///var/run/docker.sock
+      # Ryuk is the reaper container Testcontainers starts to clean up after a crashed JVM.
+      # It needs privileges rootless Podman will not grant, so it is disabled; containers are
+      # instead removed by the JVM shutdown hook. Acceptable in dev, and the compose stack is
+      # disposable anyway.
+      TESTCONTAINERS_RYUK_DISABLED: "true"
 
     depends_on:
       postgres:

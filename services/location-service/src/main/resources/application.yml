@@ -9,3 +9,17 @@ spring:
 
 server:
   port: 8081
+
+# Ingest tuning. Defaults live in LocationIngestProperties; these make the values the load
+# tests sweep visible in one place rather than buried in Java.
+ridematching:
+  location:
+    min-movement-meters: 25
+    max-write-interval: 3s
+    max-clock-skew: 30s
+    buffer-capacity: 50000
+    flush-batch-size: 500
+    flush-interval: 50ms
+    stale-after: 30s
+    reaper-interval: 10s
+    city: default

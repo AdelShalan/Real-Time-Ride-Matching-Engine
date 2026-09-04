@@ -330,7 +330,7 @@ regression in the claim path.
 | 0 | Design docs, ADRs, architecture diagram ✅ |
 | 1 | Compose infra + Maven multi-module skeleton + health checks ✅ |
 | 2 | Domain model, trip state machine, unit tests ✅ |
-| 3 | Location Service: WebSocket ingestion → Redis GEO |
+| 3 | Location Service: WebSocket ingestion → Redis GEO ✅ |
 | 4 | Dispatch API + idempotency + Postgres schema |
 | 5 | Matching Engine + claim protocol + concurrency tests |
 | 6 | Kafka topology, outbox publisher, notification/billing consumers |

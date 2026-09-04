@@ -64,6 +64,16 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!--
+            Without a classifier, repackage REPLACES the plain jar with the fat jar. Failsafe
+            runs after package, so integration tests would then resolve classes from a jar
+            where they live under BOOT-INF/classes and fail with NoClassDefFoundError.
+            The classifier keeps the plain jar as the module artifact (what other modules and
+            the tests compile against) and publishes the runnable one as *-exec.jar.
+          -->
+          <classifier>exec</classifier>
+        </configuration>
         <executions>
           <execution>
             <goals>
