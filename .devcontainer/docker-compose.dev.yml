@@ -16,16 +16,27 @@ services:
       - ..:/workspace:z
       # Named volume for the Maven repo: survives rebuilds, and avoids ~500MB of
       # dependency downloads crossing the Windows <-> VM filesystem boundary on every build.
+      # Podman creates this mount point owned by root while the container runs as vscode,
+      # so post-create.sh chowns it — otherwise the first mvn run fails outright.
+      # Note this only helps processes whose HOME is /home/vscode: a `podman exec` without
+      # --user runs as root, whose Maven writes to /root/.m2 and is lost on rebuild.
       - maven-repo:/home/vscode/.m2
       # Podman's API socket, presented under the Docker path Testcontainers expects.
       # This is the alternative to docker-in-docker promised in ADR-0007: containers the
       # tests start are siblings under the same rootless engine, not a nested daemon.
       - /run/user/1000/podman/podman.sock:/var/run/docker.sock:z
 
-    # Rootless Podman maps the container's root to your host user. Because we run as
-    # "vscode" (uid 1000) rather than root, writes to /workspace can fail with EACCES.
-    # If that happens, uncomment the line below (Podman-only; Docker will reject the value).
-    # userns_mode: "keep-id"
+    # REQUIRED under rootless Podman. Without it the container's root maps to the host user,
+    # so everything on the 9p-mounted /workspace appears as root:root 0777 to the container.
+    # The "vscode" user (uid 1000) can then write file CONTENTS but cannot call utimes() on
+    # them — POSIX requires ownership for that — and Maven's resources plugin preserves
+    # timestamps when it copies, so every build dies with:
+    #   "... .imports: Operation not permitted"
+    # keep-id maps container uid 1000 to host uid 1000, which is what actually owns these
+    # files in the Podman VM, so vscode owns them too. It also makes the podman.sock mount
+    # below readable by vscode rather than root-only.
+    # Podman-only; Docker rejects this value.
+    userns_mode: "keep-id"
 
     environment:
       # Service hostnames resolve on the shared compose network. Application config

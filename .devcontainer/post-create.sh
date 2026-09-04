@@ -4,6 +4,16 @@
 # with a clear message rather than later inside a confusing build error.
 set -euo pipefail
 
+# Podman creates named-volume mount points owned by root, but this container runs as
+# "vscode" (uid 1000). Without this, the very first `mvn` fails with
+# "Could not create local repository at /home/vscode/.m2/repository".
+# Cheap and idempotent, so it runs unconditionally rather than being a documented
+# manual step someone hits once per rebuild.
+if [ ! -w "${HOME}/.m2" ]; then
+  echo "==> Taking ownership of ${HOME}/.m2 (root-owned volume mount)"
+  sudo chown -R "$(id -u):$(id -g)" "${HOME}/.m2"
+fi
+
 echo "==> Toolchain"
 java -version 2>&1 | sed 's/^/    /'
 mvn -version 2>&1 | head -1 | sed 's/^/    /'
