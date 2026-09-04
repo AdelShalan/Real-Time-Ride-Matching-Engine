@@ -243,7 +243,7 @@ CREATE TABLE trips (
 -- THE correctness guarantee: one active trip per driver, enforced by the database.
 CREATE UNIQUE INDEX uniq_driver_active_trip
     ON trips (driver_id)
-    WHERE status IN ('MATCHED', 'ACCEPTED', 'IN_PROGRESS');
+    WHERE status IN ('OFFERED', 'ACCEPTED', 'IN_PROGRESS');
 
 CREATE TABLE idempotency_keys (
     key             TEXT PRIMARY KEY,
@@ -329,7 +329,7 @@ regression in the claim path.
 |---|---|
 | 0 | Design docs, ADRs, architecture diagram ✅ |
 | 1 | Compose infra + Maven multi-module skeleton + health checks ✅ |
-| 2 | Domain model, trip state machine, unit tests |
+| 2 | Domain model, trip state machine, unit tests ✅ |
 | 3 | Location Service: WebSocket ingestion → Redis GEO |
 | 4 | Dispatch API + idempotency + Postgres schema |
 | 5 | Matching Engine + claim protocol + concurrency tests |

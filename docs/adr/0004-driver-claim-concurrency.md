@@ -38,7 +38,7 @@ candidate immediately, rather than blocking, spinning, or retrying the same driv
 ```sql
 CREATE UNIQUE INDEX uniq_driver_active_trip
     ON trips (driver_id)
-    WHERE status IN ('MATCHED', 'ACCEPTED', 'IN_PROGRESS');
+    WHERE status IN ('OFFERED', 'ACCEPTED', 'IN_PROGRESS');
 ```
 
 The database physically cannot store two active trips for one driver. Redis can lose its dataset, a
@@ -107,7 +107,7 @@ guarantee as absolute.
 against a single `AVAILABLE` driver. Assertions:
 
 - exactly one thread receives a successful assignment;
-- `SELECT count(*) FROM trips WHERE driver_id = ? AND status IN ('MATCHED','ACCEPTED','IN_PROGRESS')`
+- `SELECT count(*) FROM trips WHERE driver_id = ? AND status IN ('OFFERED','ACCEPTED','IN_PROGRESS')`
   returns 1;
 - the 199 losers each report `ALREADY_CLAIMED` or a constraint rejection, and none throw an unhandled
   exception.

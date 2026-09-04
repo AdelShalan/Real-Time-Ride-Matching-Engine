@@ -56,7 +56,7 @@
 |---|---|
 | **Goal** | Force the concurrency invariant to fail if it can |
 | **Load** | 5,000 ride requests concentrated in a 1 km² area against only 200 available drivers |
-| **Pass** | **Zero** drivers with more than one active trip; every request resolves to `MATCHED` or `UNMATCHED`; no unhandled exceptions; contention counter is non-zero (proving the race was actually exercised — a green result with zero contention proves nothing) |
+| **Pass** | **Zero** drivers with more than one active trip; every request resolves to `ACCEPTED` or `UNMATCHED`; no unhandled exceptions; contention counter is non-zero (proving the race was actually exercised — a green result with zero contention proves nothing) |
 
 ### S4 — Idempotency under retry storm
 
@@ -108,7 +108,7 @@ Every scenario ends with this query. A non-empty result fails the run regardless
 ```sql
 SELECT driver_id, count(*) AS active_trips
 FROM trips
-WHERE status IN ('MATCHED', 'ACCEPTED', 'IN_PROGRESS')
+WHERE status IN ('OFFERED', 'ACCEPTED', 'IN_PROGRESS')
 GROUP BY driver_id
 HAVING count(*) > 1;
 -- Expected: 0 rows

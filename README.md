@@ -143,8 +143,8 @@ sequenceDiagram
     R-->>W2: DENIED (already RESERVED)
     Note over W2: falls through to next-best candidate, no retry storm
 
-    W1->>PG: INSERT trip (driver=D-42, status=MATCHED, fence=8817)
-    Note over PG: UNIQUE INDEX ON trips(driver_id)<br/>WHERE status IN (MATCHED, ACCEPTED, IN_PROGRESS)
+    W1->>PG: INSERT trip (driver=D-42, status=OFFERED, fence=8817)
+    Note over PG: UNIQUE INDEX ON trips(driver_id)<br/>WHERE status IN (OFFERED, ACCEPTED, IN_PROGRESS)
     PG-->>W1: committed
     W1->>R: confirm claim, extend to trip lifetime
 ```
@@ -154,7 +154,7 @@ sequenceDiagram
   interleave. Losers are rejected in one round trip and immediately move to the next candidate
   instead of spinning.
 - **Layer 2 — Postgres unique partial index (the actual guarantee).** `UNIQUE (driver_id) WHERE
-  status IN ('MATCHED','ACCEPTED','IN_PROGRESS')`. Even if Redis loses its state, a lock expires
+  status IN ('OFFERED','ACCEPTED','IN_PROGRESS')`. Even if Redis loses its state, a lock expires
   mid-flight, or a network partition splits the workers, the database *cannot* store two active trips
   for one driver. Correctness lives where the durable state lives.
 - **Fencing tokens.** Each claim carries a monotonic `INCR` token. A worker that stalled past its
