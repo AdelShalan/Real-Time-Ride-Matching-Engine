@@ -232,8 +232,13 @@ CREATE TABLE trips (
     driver_id      UUID,
     status         trip_status NOT NULL,
     fence_token    BIGINT,
-    pickup         GEOGRAPHY(POINT, 4326) NOT NULL,
-    dropoff        GEOGRAPHY(POINT, 4326) NOT NULL,
+    -- Plain columns, not PostGIS GEOGRAPHY. ADR-0002 reserves PostGIS for geofences and
+    -- zone analytics, and no such query exists yet; adding the extension before there is a
+    -- spatial query to serve costs a database image change and buys nothing.
+    pickup_lat     DOUBLE PRECISION NOT NULL,
+    pickup_lng     DOUBLE PRECISION NOT NULL,
+    dropoff_lat    DOUBLE PRECISION NOT NULL,
+    dropoff_lng    DOUBLE PRECISION NOT NULL,
     requested_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     matched_at     TIMESTAMPTZ,
     completed_at   TIMESTAMPTZ,
@@ -331,7 +336,7 @@ regression in the claim path.
 | 1 | Compose infra + Maven multi-module skeleton + health checks ✅ |
 | 2 | Domain model, trip state machine, unit tests ✅ |
 | 3 | Location Service: WebSocket ingestion → Redis GEO ✅ |
-| 4 | Dispatch API + idempotency + Postgres schema |
+| 4 | Dispatch API + idempotency + Postgres schema ✅ |
 | 5 | Matching Engine + claim protocol + concurrency tests |
 | 6 | Kafka topology, outbox publisher, notification/billing consumers |
 | 7 | Prometheus + Grafana dashboards |

@@ -17,4 +17,49 @@
 
   <!-- Common dependencies and the Spring Boot repackage goal are inherited from
        services/pom.xml. Add only what is specific to this service. -->
+  <dependencies>
+    <!-- Plain SQL via JdbcClient rather than JPA: the idempotency guarantee turns on the
+         exact semantics of INSERT ... ON CONFLICT DO NOTHING, which an ORM would hide. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Boot 4 split auto-configuration into per-technology modules: flyway-core on the
+         classpath is no longer enough to activate it, so spring-boot-flyway is explicit.
+         Without it Flyway simply never runs, silently — no error, no log line. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

@@ -7,5 +7,23 @@ spring:
   config:
     import: "classpath:platform-defaults.yml"
 
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:ride}
+    username: ${POSTGRES_USER:ride}
+    password: ${POSTGRES_PASSWORD:ride}
+    hikari:
+      # Sized deliberately rather than left at the default. Virtual threads make it trivial
+      # to create thousands of concurrent callers, so the connection pool becomes the real
+      # limit on database concurrency — and that limit should be explicit (ADR-0006).
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 3000
+
+  flyway:
+    enabled: true
+    # No baseline: this database is created by these migrations, so an existing schema with
+    # no history table means something is wrong and the build should say so.
+    baseline-on-migrate: false
+
 server:
   port: 8080
