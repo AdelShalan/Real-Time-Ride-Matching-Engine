@@ -45,6 +45,11 @@ services:
       # instead removed by the JVM shutdown hook. Acceptable in dev, and the compose stack is
       # disposable anyway.
       TESTCONTAINERS_RYUK_DISABLED: "true"
+      # Containers started by a test are SIBLINGS of this one, so their published ports land
+      # on the podman VM's host interface, not on this container's loopback. Without this,
+      # Testcontainers polls its own localhost and every container times out after 60s with
+      # "Timed out waiting for container port to open". Podman maps this name to the host.
+      TESTCONTAINERS_HOST_OVERRIDE: host.containers.internal
 
     depends_on:
       postgres:

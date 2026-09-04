@@ -190,6 +190,18 @@ and the broker exits rather than degrading.
 `dev.containers.dockerPath` must be set (step 3). Restart VS Code fully after changing it; the
 extension reads the setting at activation.
 
+**Integration tests hang for 60s then fail with "Timed out waiting for container port to open"**
+Containers a test starts are siblings of the dev container, so their published ports appear on the
+Podman VM's host interface rather than on the dev container's loopback — which is where
+Testcontainers looks by default. `TESTCONTAINERS_HOST_OVERRIDE=host.containers.internal` in
+[docker-compose.dev.yml](../.devcontainer/docker-compose.dev.yml) fixes it. If you see this, the
+container predates that setting: rebuild it.
+
+**"Ryuk has been disabled" in test output**
+Expected. Ryuk is the reaper container Testcontainers uses to clean up after a crashed JVM, and it
+needs privileges rootless Podman will not grant. Containers are removed by the JVM shutdown hook
+instead. A hard-killed test run can leave stray containers; `podman ps -a` will show them.
+
 **Everything is broken and you want a clean slate**
 
 ```bash
