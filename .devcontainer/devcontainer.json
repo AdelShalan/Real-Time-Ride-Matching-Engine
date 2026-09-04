@@ -44,7 +44,7 @@
         // and offer to download one.
         "java.configuration.runtimes": [
           {
-            "name": "JavaSE-21",
+            "name": "JavaSE-25",
             "path": "/usr/lib/jvm/msopenjdk-current",
             "default": true
           }

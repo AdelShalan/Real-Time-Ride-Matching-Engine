@@ -26,7 +26,7 @@
 |---|---|
 | Host CPU / RAM | TBD |
 | Docker resource limits per service | TBD |
-| JVM flags | `-XX:+UseZGC -Xmx1g -Djdk.tracePinnedThreads=full` |
+| JVM flags | `-XX:+UseZGC -Xmx1g` (no pinning flag: JEP 491 made `jdk.tracePinnedThreads` a no-op on JDK 24+) |
 | Redis / Postgres / Kafka versions | 7.x / 16 / 3.7 KRaft |
 | Load generator location | Same host (network latency excluded — stated explicitly) |
 

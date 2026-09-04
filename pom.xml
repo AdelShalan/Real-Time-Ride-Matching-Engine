@@ -31,7 +31,15 @@
   </modules>
 
   <properties>
-    <java.version>21</java.version>
+    <!--
+      Built and run on JDK 25 (LTS), but bytecode is deliberately still targeted at 21.
+      The reason for the upgrade is JEP 491 (JDK 24), which removed virtual-thread pinning
+      on synchronized blocks — a JVM RUNTIME behaviour, not a bytecode feature. Keeping the
+      release target at 21 gets the whole benefit with none of the toolchain risk: ArchUnit
+      and other bytecode readers never have to parse class-file version 69.
+      Raising this to 25 is a separate decision, to be made for language features on merit.
+    -->
+    <java.version>25</java.version>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>

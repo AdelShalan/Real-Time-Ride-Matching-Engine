@@ -5,7 +5,9 @@
 
 services:
   workspace:
-    image: mcr.microsoft.com/devcontainers/java:21-bookworm
+    # Java 25 (LTS). The runtime matters more than the language level here:
+    # JDK 24 shipped JEP 491, which removed virtual-thread pinning on synchronized.
+    image: mcr.microsoft.com/devcontainers/java:25-bookworm
 
     # Keep the container alive; VS Code execs into it.
     command: sleep infinity

@@ -10,7 +10,7 @@ Kafka topology, and the load-test evidence that it holds up.
 
 | | |
 |---|---|
-| **Language / Runtime** | Java 21 (virtual threads), Spring Boot 4.1 |
+| **Language / Runtime** | Java 25 LTS (virtual threads), Spring Boot 4.1 |
 | **Geospatial index** | Redis 7 (`GEOADD` / `GEOSEARCH`) |
 | **System of record** | PostgreSQL 16 |
 | **Event backbone** | Apache Kafka (KRaft) |

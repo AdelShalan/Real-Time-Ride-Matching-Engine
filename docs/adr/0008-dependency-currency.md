@@ -71,17 +71,45 @@ do not announce that they have stopped guarding anything.
 - Testcontainers 2.x is a major version whose full API surface has not been exercised here — only the
   parts `RedisDriverLocationIndexIT` uses.
 
-## Java 25: deferred, not rejected
+## Java 25: done, and why it was worth it
 
-Boot 4 gives first-class support for **Java 25** while keeping Java 17 as the floor. The reason to
-move is specific rather than cosmetic: **JDK 24 shipped JEP 491, removing the virtual-thread pinning
-hazard on `synchronized` blocks.** [ADR-0006](0006-java21-virtual-threads.md) currently lists that as
-a live constraint requiring `ReentrantLock` discipline and `-Djdk.tracePinnedThreads` in the
-load-test profile.
+The runtime moved from Java 21 to **Java 25 LTS** (25.0.4.1) in the same pass.
 
-Upgrading would let that ADR **delete a caveat rather than manage one**. It is deferred only because
-it requires rebuilding the dev container onto a new JDK base image, which is a separate change with
-its own verification.
+The reason is specific rather than cosmetic. **JDK 24 shipped [JEP 491](https://openjdk.org/jeps/491),
+which removed virtual-thread pinning on `synchronized` blocks.** Under Java 21, a virtual thread that
+blocks inside `synchronized` holds its carrier hostage. [ADR-0006](0006-java21-virtual-threads.md)
+mitigated this by mandating `ReentrantLock` — but that only covers code *we* write. The risk lives in
+libraries we do not control: the Redis client, the JDBC driver arriving in Phase 4, the logging
+framework that runs on every request path.
+
+The arithmetic is what makes it serious here. Carrier threads come from a ForkJoinPool sized to CPU
+count, and the dev VM has **4 vCPUs**. Two pinned carriers is half the scheduler gone — a throughput
+cliff that appears only under concurrency, i.e. precisely during the Phase 8 load test.
+
+**Measured, not assumed.** Eight virtual threads, each blocking 300ms inside `synchronized` on eight
+*different* locks (so nothing is genuinely contended), with the scheduler restricted to one carrier:
+
+| Runtime | Elapsed | Verdict |
+|---|---|---|
+| JDK 21.0.12.1 | **2431 ms** | Pinned — carrier held, tasks fully serialised (2400 ms is the serial floor) |
+| JDK 25.0.4.1 | **308 ms** | Not pinned — carrier released, tasks overlapped |
+
+A 7.9× difference on work that should have been perfectly parallel.
+
+### Bytecode target deliberately stays at 21
+
+`maven.compiler.release` remains `21` while the build runs on JDK 25. JEP 491 is a **JVM runtime**
+behaviour, not a bytecode feature, so the entire benefit lands without emitting class-file version 69
+— which ArchUnit 1.3.0 and other bytecode readers would have to be upgraded to parse. Raising the
+language level is a separate decision to be taken on the merits of the language features, not
+smuggled in as a side effect of a runtime upgrade.
+
+### Consequence
+
+`-Djdk.tracePinnedThreads` is now inert (the JEP explicitly retires it), so it has been removed from
+the load-test JVM flags in [LOAD_TESTING.md](../LOAD_TESTING.md). ADR-0006's pinning caveat is
+resolved rather than managed — the discipline of preferring `ReentrantLock` remains good practice,
+but it is no longer load-bearing.
 
 ## Verification
 

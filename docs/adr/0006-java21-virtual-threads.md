@@ -42,6 +42,10 @@ each with a straightforward `while (running) { move(); send(); sleep(1s); }` loo
 of 10,000 independent clients. Simulating that on an event loop would mean the load generator itself
 becomes a nontrivial concurrency problem.
 
+> **Update (2026-09-04):** this ADR's decision is unchanged, but the runtime moved from Java 21 to
+> Java 25 LTS, which resolves the pinning constraint below. See
+> [ADR-0008](0008-dependency-currency.md) for the measurement. The original text is kept as written.
+
 ## Known constraints, and how they are handled
 
 - **Pinning.** A virtual thread blocking inside a `synchronized` block pins its carrier thread. All
