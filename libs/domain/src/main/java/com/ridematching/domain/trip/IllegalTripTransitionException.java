@@ -10,6 +10,14 @@ package com.ridematching.domain.trip;
  */
 public class IllegalTripTransitionException extends RuntimeException {
 
+    /**
+     * Declared explicitly rather than left to the compiler. These exceptions are never
+     * serialised across a wire today, but an implicit value changes whenever the class
+     * shape changes, which turns a harmless refactor into a deserialisation failure the
+     * day something does serialise one.
+     */
+    private static final long serialVersionUID = 1L;
+
     private final TripStatus from;
     private final TripStatus to;
 

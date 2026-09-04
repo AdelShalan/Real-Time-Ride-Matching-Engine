@@ -4,6 +4,7 @@ import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.DriverLocation;
 import com.ridematching.location.application.port.DriverLocationIndex;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 
@@ -70,7 +71,13 @@ public class LocationIngestService {
         this.flushTimer = Timer.builder("location.ingest.duration")
                 .description("Time to flush one batch to the index").register(meters);
 
-        meters.gauge("location.buffer.depth", this.buffer, java.util.Collection::size);
+        // An explicit lambda rather than Collection::size. A method reference passes the
+        // queue as the receiver, and the IDE's null analysis cannot prove that satisfies
+        // Micrometer's @NonNull functional descriptor — a false positive, but a permanent
+        // warning teaches you to stop reading the warnings panel.
+        Gauge.builder("location.buffer.depth", this.buffer, queue -> (double) queue.size())
+                .description("Frames waiting to be written to the index")
+                .register(meters);
     }
 
     /**
