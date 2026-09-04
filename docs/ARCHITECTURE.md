@@ -328,7 +328,7 @@ regression in the claim path.
 | Phase | Deliverable |
 |---|---|
 | 0 | Design docs, ADRs, architecture diagram ✅ |
-| 1 | Docker Compose infra + Maven multi-module skeleton + health checks |
+| 1 | Compose infra + Maven multi-module skeleton + health checks ✅ |
 | 2 | Domain model, trip state machine, unit tests |
 | 3 | Location Service: WebSocket ingestion → Redis GEO |
 | 4 | Dispatch API + idempotency + Postgres schema |
