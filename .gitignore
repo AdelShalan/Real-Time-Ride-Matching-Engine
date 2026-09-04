@@ -1,8 +1,16 @@
 # Build
+#
+# Anchored with a leading slash where the name is a plausible PACKAGE name, not just a
+# build directory. An unanchored "out/" matches at ANY depth, and this project's hexagonal
+# layout has adapters/out/ — so it silently excluded the entire outbound adapter package,
+# including the Redis index, from version control. The build passed locally because the
+# files were on disk; a fresh clone would not have compiled.
+#
+# target/ stays unanchored on purpose: Maven creates one per module, at every depth.
 target/
-build/
-out/
-bin/
+/build/
+/out/
+/bin/
 *.jar
 !.mvn/wrapper/maven-wrapper.jar
 *.war
