@@ -35,7 +35,11 @@ class ArchitectureTest {
                         "org.springframework..",
                         "jakarta.persistence..",
                         "jakarta.validation..",
+                        // Both Jackson generations: Boot 4 ships Jackson 3 under tools.jackson,
+                        // and banning only the old package would have silently reopened the
+                        // hole this rule exists to close.
                         "com.fasterxml.jackson..",
+                        "tools.jackson..",
                         "org.apache.kafka..",
                         "io.lettuce..",
                         "redis.clients..",

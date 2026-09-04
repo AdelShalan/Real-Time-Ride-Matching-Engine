@@ -1,6 +1,6 @@
 package com.ridematching.location;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.ridematching.location.adapters.in.ws.DriverHandshakeInterceptor;
 import com.ridematching.location.adapters.in.ws.DriverLocationWebSocketHandler;
 import com.ridematching.location.adapters.out.redis.RedisDriverLocationIndex;

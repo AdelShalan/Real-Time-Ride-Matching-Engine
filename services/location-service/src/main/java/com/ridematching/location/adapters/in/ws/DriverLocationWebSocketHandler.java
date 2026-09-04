@@ -1,6 +1,6 @@
 package com.ridematching.location.adapters.in.ws;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.DriverLocation;
 import com.ridematching.domain.geo.Coordinates;

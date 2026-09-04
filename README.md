@@ -10,7 +10,7 @@ Kafka topology, and the load-test evidence that it holds up.
 
 | | |
 |---|---|
-| **Language / Runtime** | Java 21 (virtual threads), Spring Boot 3.3 |
+| **Language / Runtime** | Java 21 (virtual threads), Spring Boot 4.1 |
 | **Geospatial index** | Redis 7 (`GEOADD` / `GEOSEARCH`) |
 | **System of record** | PostgreSQL 16 |
 | **Event backbone** | Apache Kafka (KRaft) |
@@ -342,5 +342,6 @@ Full setup and troubleshooting: **[docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT
 | [0005](docs/adr/0005-idempotency.md) | Idempotency keys on ride creation |
 | [0006](docs/adr/0006-java21-virtual-threads.md) | Java 21 virtual threads over a reactive stack |
 | [0007](docs/adr/0007-containerized-dev-environment.md) | Dev Container on Podman; compose siblings, not Docker-in-Docker |
+| [0008](docs/adr/0008-dependency-currency.md) | Track supported dependency versions; the Spring Boot 4 upgrade |
 
 Full design detail: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
