@@ -2,7 +2,6 @@ package com.ridematching.dispatch.adapters.out.persistence;
 
 import com.ridematching.dispatch.application.DriverAlreadyAssignedException;
 import com.ridematching.dispatch.application.port.TripRepository;
-import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
 import com.ridematching.domain.rider.RiderId;
@@ -51,7 +50,7 @@ public class JdbcTripRepository implements TripRepository {
                             """)
                     .param("id", trip.id().value())
                     .param("riderId", trip.riderId().value())
-                    .param("driverId", trip.assignedDriver().map(DriverId::value).orElse(null))
+                    .param("driverId", trip.assignedDriver().map(driver -> driver.value()).orElse(null))
                     .param("status", trip.status().name())
                     .param("vehicleClass", trip.vehicleClass().name())
                     .param("fenceToken", trip.fenceToken().orElse(null))
@@ -88,9 +87,9 @@ public class JdbcTripRepository implements TripRepository {
                              CAST(:toStatus AS trip_status), :driverId, :reason, :occurredAt)
                         """)
                 .param("tripId", rideId.value())
-                .param("fromStatus", transition.previousState().map(Enum::name).orElse(null))
+                .param("fromStatus", transition.previousState().map(status -> status.name()).orElse(null))
                 .param("toStatus", transition.to().name())
-                .param("driverId", transition.driver().map(DriverId::value).orElse(null))
+                .param("driverId", transition.driver().map(driver -> driver.value()).orElse(null))
                 .param("reason", transition.reason())
                 .param("occurredAt", Timestamp.from(transition.occurredAt()))
                 .update();
@@ -121,7 +120,7 @@ public class JdbcTripRepository implements TripRepository {
                             rs.getObject("driver_id", UUID.class));
                 })
                 .optional()
-                .map(StoredTrip::trip);
+                .map(stored -> stored.trip());
     }
 
     /**

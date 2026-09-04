@@ -1,6 +1,5 @@
 package com.ridematching.dispatch.adapters.out.persistence;
 
-import com.ridematching.dispatch.application.DriverAlreadyAssignedException;
 import com.ridematching.dispatch.application.RequestRideUseCase;
 import com.ridematching.dispatch.application.RideRequestOutcome;
 import com.ridematching.dispatch.application.port.IdempotencyStore;
@@ -8,7 +7,6 @@ import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
 import com.ridematching.domain.rider.RiderId;
-import com.ridematching.domain.trip.RideId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,7 +18,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -54,10 +52,12 @@ class DispatchPersistenceIT {
         }
     }
 
+    // Testcontainers 2 moved module classes into their own packages and dropped the
+    // self-type generic, so this is PostgreSQLContainer rather than PostgreSQLContainer<?>.
     @Container
     @SuppressWarnings("resource")
-    static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:16-alpine")
+    static final PostgreSQLContainer POSTGRES =
+            new PostgreSQLContainer("postgres:16-alpine")
                     .withDatabaseName("ride")
                     .withUsername("ride")
                     .withPassword("ride");

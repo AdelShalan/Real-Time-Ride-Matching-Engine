@@ -85,8 +85,8 @@ public class RideController {
             case REPLAYED -> ResponseEntity.status(HttpStatus.OK)
                     .body(RideResponseDto.accepted(outcome.rideId().value()));
 
-            case KEY_REUSE -> ResponseEntity.unprocessableEntity()
-                    .body(problem(HttpStatus.UNPROCESSABLE_ENTITY, "Idempotency-Key reused",
+            case KEY_REUSE -> ResponseEntity.unprocessableContent()
+                    .body(problem(HttpStatus.UNPROCESSABLE_CONTENT, "Idempotency-Key reused",
                             "This Idempotency-Key was already used for a different request."));
         };
     }
