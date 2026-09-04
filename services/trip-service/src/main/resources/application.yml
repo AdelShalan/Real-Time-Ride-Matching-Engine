@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: trip-service
+  threads:
+    virtual:
+      # ADR-0006. One virtual thread per request; blocking code, reactive scalability.
+      enabled: true
+
+server:
+  port: 8083
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only what is needed: an open actuator surface is an information leak.
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.ridematching: INFO
