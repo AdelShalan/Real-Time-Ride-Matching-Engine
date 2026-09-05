@@ -2,7 +2,6 @@ package com.ridematching.dispatch.application;
 
 import com.ridematching.dispatch.application.port.IdempotencyRecord;
 import com.ridematching.dispatch.application.port.IdempotencyStore;
-import com.ridematching.dispatch.application.port.OutboxWriter;
 import com.ridematching.dispatch.application.port.TripRepository;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
@@ -108,27 +107,15 @@ class RequestRideUseCaseTest {
         }
     }
 
-    /** Unused by the use case directly, but required to construct it. */
-    private static final class RecordingOutbox implements OutboxWriter {
-        final java.util.List<DomainEvent> appended = new java.util.ArrayList<>();
-
-        @Override
-        public void append(DomainEvent event) {
-            appended.add(event);
-        }
-    }
-
     private FakeIdempotencyStore idempotency;
     private RecordingTripRepository trips;
-    private RecordingOutbox outbox;
     private RequestRideUseCase useCase;
 
     @BeforeEach
     void setUp() {
         idempotency = new FakeIdempotencyStore();
         trips = new RecordingTripRepository();
-        outbox = new RecordingOutbox();
-        useCase = new RequestRideUseCase(trips, idempotency, outbox, new SimpleMeterRegistry(),
+        useCase = new RequestRideUseCase(trips, idempotency, new SimpleMeterRegistry(),
                 Clock.fixed(T0, ZoneOffset.UTC));
     }
 
@@ -171,19 +158,6 @@ class RequestRideUseCaseTest {
                     .as("keyed by rideId so a ride's events stay ordered")
                     .isEqualTo(outcome.rideId().value().toString());
             assertThat(event.eventId()).isNotNull();
-        }
-
-        @Test
-        @DisplayName("the event is written through the SAME call as the trip, not separately")
-        void eventIsNotASecondWrite() {
-            useCase.handle(command(), "key-1");
-
-            // If the use case appended to the outbox on its own, this list would be non-empty
-            // and the two writes would be separate transactions — the dual-write bug.
-            assertThat(outbox.appended)
-                    .as("the event must ride along with the trip insert, not be a separate write")
-                    .isEmpty();
-            assertThat(trips.events).hasSize(1);
         }
 
         @Test

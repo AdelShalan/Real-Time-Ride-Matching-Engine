@@ -55,14 +55,14 @@ class OutboxPublisherIT {
         }
     }
 
+    // No @SuppressWarnings("resource"): the Testcontainers extension owns the lifecycle of
+    // @Container fields, and the suppression is unanalysable with resource checks disabled.
     @Container
-    @SuppressWarnings("resource")
     static final PostgreSQLContainer POSTGRES =
             new PostgreSQLContainer("postgres:16-alpine")
                     .withDatabaseName("ride").withUsername("ride").withPassword("ride");
 
     @Container
-    @SuppressWarnings("resource")
     static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.8.1");
 
     @DynamicPropertySource

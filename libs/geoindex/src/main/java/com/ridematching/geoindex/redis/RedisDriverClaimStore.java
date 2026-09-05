@@ -26,9 +26,16 @@ import java.util.Optional;
  */
 public class RedisDriverClaimStore implements DriverClaimStore {
 
+    /**
+     * There is no way to write {@code List<Object>.class} in Java, so the cast is unavoidable.
+     * Isolating it in one constant means the suppression covers exactly this line rather than
+     * hiding genuine unchecked warnings elsewhere in the class.
+     */
     @SuppressWarnings("unchecked")
-    private static final RedisScript<List> CLAIM_SCRIPT = new DefaultRedisScript<>(
-            readScript("redis/claim-driver.lua"), List.class);
+    private static final Class<List<Object>> LIST_TYPE = (Class<List<Object>>) (Class<?>) List.class;
+
+    private static final RedisScript<List<Object>> CLAIM_SCRIPT =
+            new DefaultRedisScript<>(readScript("redis/claim-driver.lua"), LIST_TYPE);
 
     /**
      * Release is also a script, for the same reason the claim is: checking the token and
@@ -63,7 +70,7 @@ public class RedisDriverClaimStore implements DriverClaimStore {
 
     @Override
     public ClaimResult claim(DriverId driverId, String offerToken, Duration ttl) {
-        List<?> result = redis.execute(
+        List<Object> result = redis.execute(
                 CLAIM_SCRIPT,
                 List.of(keys.driverState(driverId), keys.claim(driverId), keys.fenceCounter()),
                 offerToken,

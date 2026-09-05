@@ -2,7 +2,6 @@ package com.ridematching.dispatch.application;
 
 import com.ridematching.dispatch.application.port.IdempotencyRecord;
 import com.ridematching.dispatch.application.port.IdempotencyStore;
-import com.ridematching.dispatch.application.port.OutboxWriter;
 import com.ridematching.dispatch.application.port.TripRepository;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
@@ -34,7 +33,6 @@ public class RequestRideUseCase {
 
     private final TripRepository trips;
     private final IdempotencyStore idempotency;
-    private final OutboxWriter outbox;
     private final Clock clock;
 
     private final Counter created;
@@ -42,14 +40,18 @@ public class RequestRideUseCase {
     private final Counter inFlightConflicts;
     private final Counter keyReuse;
 
+    /**
+     * No {@code OutboxWriter} here on purpose: the event is written by
+     * {@link TripRepository#insertWithEvent} so it shares the trip's transaction. Injecting the
+     * writer separately would invite a caller to append outside that boundary, which is exactly
+     * the dual-write the outbox exists to prevent.
+     */
     public RequestRideUseCase(TripRepository trips,
                               IdempotencyStore idempotency,
-                              OutboxWriter outbox,
                               MeterRegistry meters,
                               Clock clock) {
         this.trips = trips;
         this.idempotency = idempotency;
-        this.outbox = outbox;
         this.clock = clock;
 
         this.created = Counter.builder("rides.requested")

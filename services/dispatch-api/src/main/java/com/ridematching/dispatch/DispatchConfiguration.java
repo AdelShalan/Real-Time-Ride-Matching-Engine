@@ -65,10 +65,9 @@ public class DispatchConfiguration implements SchedulingConfigurer {
     @Bean
     public static RequestRideUseCase requestRideUseCase(TripRepository trips,
                                                         IdempotencyStore idempotency,
-                                                        OutboxWriter outbox,
                                                         MeterRegistry meters,
                                                         Clock clock) {
-        return new RequestRideUseCase(trips, idempotency, outbox, meters, clock);
+        return new RequestRideUseCase(trips, idempotency, meters, clock);
     }
 
     /**

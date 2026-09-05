@@ -1,6 +1,7 @@
 package com.ridematching.dispatch.adapters.out.messaging;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ public class OutboxPublisher {
     private final Clock clock;
     private final int batchSize;
 
+    private final MeterRegistry meters;
     private final Counter published;
     private final Counter failed;
 
@@ -47,16 +49,32 @@ public class OutboxPublisher {
         this.kafka = kafka;
         this.clock = clock;
         this.batchSize = batchSize;
+        this.meters = meters;
 
         this.published = Counter.builder("outbox.published")
                 .description("Events drained from the outbox to Kafka").register(meters);
         this.failed = Counter.builder("outbox.publish.failed")
                 .description("Outbox rows whose send failed and will be retried").register(meters);
 
-        // Backlog depth is the health signal: a growing outbox means Kafka is unreachable or
-        // the publisher has stalled, and it is visible long before anyone notices missing
-        // notifications.
-        meters.gauge("outbox.backlog", this, OutboxPublisher::backlogDepth);
+    }
+
+    /**
+     * Registers the backlog gauge after construction completes.
+     *
+     * <p>Not in the constructor: handing {@code this} to a registry from inside a constructor
+     * publishes a half-initialised object, which javac flags as a possible 'this' escape.
+     * Marking the class final would also silence that — and did, until the resulting inability
+     * to create a CGLIB proxy broke {@code @Transactional} on {@link #publishBatch()}.
+     *
+     * <p>Backlog depth is the health signal that matters here: a growing outbox means Kafka is
+     * unreachable or the publisher has stalled, and it shows up long before anyone notices
+     * missing notifications.
+     */
+    @jakarta.annotation.PostConstruct
+    void registerMetrics() {
+        Gauge.builder("outbox.backlog", this, publisher -> publisher.backlogDepth())
+                .description("Events written but not yet published to Kafka")
+                .register(meters);
     }
 
     /**
