@@ -2,6 +2,11 @@ apiVersion: 1
 
 datasources:
   - name: Prometheus
+    # Pinned, not generated. Without an explicit uid Grafana invents one per installation
+    # (PBFA97CFB590B2093 here), while the committed dashboard JSON references "prometheus" —
+    # so every panel points at a datasource that does not exist and renders empty with no
+    # error on the panel itself. A dashboard is only portable if the uid it names is stable.
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
