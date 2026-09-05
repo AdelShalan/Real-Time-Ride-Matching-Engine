@@ -1,6 +1,7 @@
 package com.ridematching.dispatch.adapters.out.persistence;
 
 import com.ridematching.dispatch.application.DriverAlreadyAssignedException;
+import com.ridematching.dispatch.application.port.OutboxWriter;
 import com.ridematching.dispatch.application.port.TripRepository;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
@@ -9,6 +10,7 @@ import com.ridematching.domain.trip.RideId;
 import com.ridematching.domain.trip.Trip;
 import com.ridematching.domain.trip.TripStatus;
 import com.ridematching.domain.trip.TripTransition;
+import com.ridematching.events.DomainEvent;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +30,20 @@ import java.util.UUID;
 public class JdbcTripRepository implements TripRepository {
 
     private final JdbcClient jdbc;
+    private final OutboxWriter outbox;
 
-    public JdbcTripRepository(JdbcClient jdbc) {
+    public JdbcTripRepository(JdbcClient jdbc, OutboxWriter outbox) {
         this.jdbc = jdbc;
+        this.outbox = outbox;
+    }
+
+    @Override
+    @Transactional
+    public void insertWithEvent(Trip trip, DomainEvent event) {
+        // Both writes go through the same JdbcClient inside one @Transactional boundary, so
+        // they share a connection and commit or roll back together.
+        insert(trip);
+        outbox.append(event);
     }
 
     @Override

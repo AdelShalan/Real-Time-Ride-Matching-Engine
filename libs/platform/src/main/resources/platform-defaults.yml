@@ -10,12 +10,39 @@
 #
 # Imported documents have LOWER precedence than the file importing them, so a service can
 # override any of this in its own application.yml.
+#
+# Keep this as ONE "spring:" mapping. A second top-level "spring:" key later in the file is a
+# duplicate key: the parser either rejects it or silently keeps only one branch, which would
+# quietly turn off virtual threads while everything still compiled.
 
 spring:
   threads:
     virtual:
       # ADR-0006. One virtual thread per request; blocking code, reactive scalability.
       enabled: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:29092}
+    producer:
+      # acks=all plus idempotence: a producer retry must not silently duplicate or reorder a
+      # record. The cost is latency on the ack, which the outbox absorbs off the request path.
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # earliest: a new consumer group must see the backlog rather than silently skipping
+      # everything published before it started.
+      auto-offset-reset: earliest
+      # Offsets are committed after the listener returns, which is what makes delivery
+      # at-least-once rather than at-most-once. Consumers dedupe on eventId.
+      enable-auto-commit: false
+    listener:
+      ack-mode: record
 
 server:
   shutdown: graceful

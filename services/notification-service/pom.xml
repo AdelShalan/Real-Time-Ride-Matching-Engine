@@ -17,4 +17,15 @@
 
   <!-- Common dependencies and the Spring Boot repackage goal are inherited from
        services/pom.xml. Add only what is specific to this service. -->
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
+    </dependency>
+    <!-- Redis holds the de-duplication markers for at-least-once delivery (ADR-0003). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+  </dependencies>
 </project>

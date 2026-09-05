@@ -2,12 +2,14 @@ package com.ridematching.dispatch.application;
 
 import com.ridematching.dispatch.application.port.IdempotencyRecord;
 import com.ridematching.dispatch.application.port.IdempotencyStore;
+import com.ridematching.dispatch.application.port.OutboxWriter;
 import com.ridematching.dispatch.application.port.TripRepository;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
 import com.ridematching.domain.rider.RiderId;
 import com.ridematching.domain.trip.RideId;
 import com.ridematching.domain.trip.Trip;
+import com.ridematching.events.DomainEvent;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,8 +78,14 @@ class RequestRideUseCaseTest {
         }
     }
 
+    /**
+     * Records inserts and the events written alongside them. The paired write is modelled
+     * all-or-nothing, exactly as the @Transactional boundary makes it in production, so a
+     * test cannot pass on a sequence the database would never produce.
+     */
     private static final class RecordingTripRepository implements TripRepository {
         final java.util.List<Trip> inserted = new java.util.ArrayList<>();
+        final java.util.List<DomainEvent> events = new java.util.ArrayList<>();
         RuntimeException failWith;
 
         @Override
@@ -89,20 +97,38 @@ class RequestRideUseCaseTest {
         }
 
         @Override
+        public void insertWithEvent(Trip trip, DomainEvent event) {
+            insert(trip);
+            events.add(event);
+        }
+
+        @Override
         public Optional<Trip> findById(RideId rideId) {
             return inserted.stream().filter(t -> t.id().equals(rideId)).findFirst();
         }
     }
 
+    /** Unused by the use case directly, but required to construct it. */
+    private static final class RecordingOutbox implements OutboxWriter {
+        final java.util.List<DomainEvent> appended = new java.util.ArrayList<>();
+
+        @Override
+        public void append(DomainEvent event) {
+            appended.add(event);
+        }
+    }
+
     private FakeIdempotencyStore idempotency;
     private RecordingTripRepository trips;
+    private RecordingOutbox outbox;
     private RequestRideUseCase useCase;
 
     @BeforeEach
     void setUp() {
         idempotency = new FakeIdempotencyStore();
         trips = new RecordingTripRepository();
-        useCase = new RequestRideUseCase(trips, idempotency, new SimpleMeterRegistry(),
+        outbox = new RecordingOutbox();
+        useCase = new RequestRideUseCase(trips, idempotency, outbox, new SimpleMeterRegistry(),
                 Clock.fixed(T0, ZoneOffset.UTC));
     }
 
@@ -131,6 +157,33 @@ class RequestRideUseCaseTest {
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> useCase.handle(command(), "  "))
                     .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("a RideRequested event is written with the trip")
+        void writesTheEventWithTheTrip() {
+            RideRequestOutcome outcome = useCase.handle(command(), "key-1");
+
+            assertThat(trips.events).hasSize(1);
+            DomainEvent event = trips.events.get(0);
+            assertThat(event.topic()).isEqualTo("ride.requested.v1");
+            assertThat(event.partitionKey())
+                    .as("keyed by rideId so a ride's events stay ordered")
+                    .isEqualTo(outcome.rideId().value().toString());
+            assertThat(event.eventId()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("the event is written through the SAME call as the trip, not separately")
+        void eventIsNotASecondWrite() {
+            useCase.handle(command(), "key-1");
+
+            // If the use case appended to the outbox on its own, this list would be non-empty
+            // and the two writes would be separate transactions — the dual-write bug.
+            assertThat(outbox.appended)
+                    .as("the event must ride along with the trip insert, not be a separate write")
+                    .isEmpty();
+            assertThat(trips.events).hasSize(1);
         }
 
         @Test
@@ -218,6 +271,18 @@ class RequestRideUseCaseTest {
 
             // Without the release, this key would return 409 for its whole 24h lifetime.
             assertThat(idempotency.find("key-1")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a failed insert leaves no event behind")
+        void failedInsertPublishesNothing() {
+            trips.failWith = new IllegalStateException("database unavailable");
+
+            assertThatThrownBy(() -> useCase.handle(command(), "key-1"));
+
+            assertThat(trips.events)
+                    .as("an event for a trip that was never saved would be a phantom ride")
+                    .isEmpty();
         }
 
         @Test

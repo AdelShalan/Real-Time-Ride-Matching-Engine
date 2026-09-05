@@ -2,12 +2,14 @@ package com.ridematching.dispatch.application;
 
 import com.ridematching.dispatch.application.port.IdempotencyRecord;
 import com.ridematching.dispatch.application.port.IdempotencyStore;
+import com.ridematching.dispatch.application.port.OutboxWriter;
 import com.ridematching.dispatch.application.port.TripRepository;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
 import com.ridematching.domain.rider.RiderId;
 import com.ridematching.domain.trip.RideId;
 import com.ridematching.domain.trip.Trip;
+import com.ridematching.events.RideRequested;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -32,6 +34,7 @@ public class RequestRideUseCase {
 
     private final TripRepository trips;
     private final IdempotencyStore idempotency;
+    private final OutboxWriter outbox;
     private final Clock clock;
 
     private final Counter created;
@@ -41,10 +44,12 @@ public class RequestRideUseCase {
 
     public RequestRideUseCase(TripRepository trips,
                               IdempotencyStore idempotency,
+                              OutboxWriter outbox,
                               MeterRegistry meters,
                               Clock clock) {
         this.trips = trips;
         this.idempotency = idempotency;
+        this.outbox = outbox;
         this.clock = clock;
 
         this.created = Counter.builder("rides.requested")
@@ -122,7 +127,19 @@ public class RequestRideUseCase {
                     command.vehicleClass(),
                     clock);
 
-            trips.insert(trip);
+            // Trip row and outbox row commit together (ADR-0003). Publishing to Kafka here
+            // instead would be the dual-write bug: a crash between the two would leave either
+            // an event for a trip that does not exist, or a trip nobody is told about.
+            trips.insertWithEvent(trip, new RideRequested(
+                    java.util.UUID.randomUUID(),
+                    rideId.value(),
+                    command.riderId().value(),
+                    command.pickup().latitude(),
+                    command.pickup().longitude(),
+                    command.dropoff().latitude(),
+                    command.dropoff().longitude(),
+                    command.vehicleClass().name(),
+                    clock.instant()));
             created.increment();
             return RideRequestOutcome.accepted(rideId);
         } catch (RuntimeException e) {
