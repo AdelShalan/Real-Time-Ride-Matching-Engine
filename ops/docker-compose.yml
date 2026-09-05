@@ -4,15 +4,24 @@
 #   1. As the base of the dev container (see .devcontainer/docker-compose.dev.yml)
 #   2. Standalone:  podman compose -f ops/docker-compose.yml up -d
 #
-# Application services are added here in later phases. Prometheus and Grafana sit
-# behind the "observability" profile so day-to-day startup stays fast:
-#   podman compose -f ops/docker-compose.yml --profile observability up -d
+# Every service carries an explicit mem_limit. Without one the JVM reads the VM's total
+# memory for MaxRAMPercentage and concludes it may grow to several GB; six services doing
+# that is what exhausted the machine once already.
+#
+# Do NOT run the "app" profile and the dev container at the same time. Each mode fits
+# comfortably in the VM; both together do not, and the result is an OOM kill rather than a
+# slowdown:
+#   development  = infra + dev container
+#   full system  = infra + app services (+ observability), VS Code closed
 
 name: ride-matching-engine
 
 services:
   postgres:
     image: postgres:16-alpine
+    # Measured at ~38MB idle; 256m leaves headroom for shared_buffers and the connection pool
+    # under load without letting it grow unbounded.
+    mem_limit: 256m
     environment:
       POSTGRES_USER: ride
       POSTGRES_PASSWORD: ride
@@ -34,6 +43,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    # 10k drivers plus state hashes is ~50MB (ADR-0002). Redis is the cheapest thing here.
+    mem_limit: 192m
     # appendonly + everysec: a warm restart keeps the geo index rather than starting
     # empty. Durability is not required here (ADR-0002) but a fast restart is convenient.
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
@@ -52,7 +63,14 @@ services:
   kafka:
     # KRaft mode: single node, no ZooKeeper.
     image: apache/kafka:3.8.1
+    # Measured at ~1GB before this limit: the largest infrastructure consumer by far.
+    mem_limit: 768m
     environment:
+      # Halving the heap is the single biggest memory win in the stack. The default is 1G,
+      # which a single-broker development instance never needs. 768m of container leaves
+      # room above the 512m heap for the page cache and direct buffers, which is where a
+      # broker actually spends its memory.
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
       KAFKA_NODE_ID: "1"
       KAFKA_PROCESS_ROLES: "broker,controller"
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
@@ -99,8 +117,13 @@ services:
       dockerfile: ops/Dockerfile
       args:
         SERVICE: dispatch-api
+    # Hard ceiling. The JVM reads this cgroup limit for MaxRAMPercentage, so the two
+    # numbers are linked: changing one without the other either wastes memory or
+    # invites an OOM kill.
+    mem_limit: 512m
     environment:
       SERVER_PORT: "8080"
+      JAVA_OPTS: "-XX:+UseZGC -XX:MaxRAMPercentage=50"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ride
@@ -136,8 +159,13 @@ services:
       dockerfile: ops/Dockerfile
       args:
         SERVICE: location-service
+    # Hard ceiling. The JVM reads this cgroup limit for MaxRAMPercentage, so the two
+    # numbers are linked: changing one without the other either wastes memory or
+    # invites an OOM kill.
+    mem_limit: 512m
     environment:
       SERVER_PORT: "8080"
+      JAVA_OPTS: "-XX:+UseZGC -XX:MaxRAMPercentage=50"
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
       KAFKA_BOOTSTRAP: kafka:9092
@@ -166,8 +194,13 @@ services:
       dockerfile: ops/Dockerfile
       args:
         SERVICE: matching-engine
+    # Hard ceiling. The JVM reads this cgroup limit for MaxRAMPercentage, so the two
+    # numbers are linked: changing one without the other either wastes memory or
+    # invites an OOM kill.
+    mem_limit: 448m
     environment:
       SERVER_PORT: "8080"
+      JAVA_OPTS: "-XX:+UseZGC -XX:MaxRAMPercentage=50"
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
       KAFKA_BOOTSTRAP: kafka:9092
@@ -190,14 +223,19 @@ services:
       - ride-net
 
   trip-service:
-    profiles: ["app"]
+    profiles: ["app-full"]
     build:
       context: ..
       dockerfile: ops/Dockerfile
       args:
         SERVICE: trip-service
+    # Hard ceiling. The JVM reads this cgroup limit for MaxRAMPercentage, so the two
+    # numbers are linked: changing one without the other either wastes memory or
+    # invites an OOM kill.
+    mem_limit: 320m
     environment:
       SERVER_PORT: "8080"
+      JAVA_OPTS: "-XX:+UseSerialGC -XX:MaxRAMPercentage=50"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ride
@@ -229,8 +267,13 @@ services:
       dockerfile: ops/Dockerfile
       args:
         SERVICE: notification-service
+    # Hard ceiling. The JVM reads this cgroup limit for MaxRAMPercentage, so the two
+    # numbers are linked: changing one without the other either wastes memory or
+    # invites an OOM kill.
+    mem_limit: 320m
     environment:
       SERVER_PORT: "8080"
+      JAVA_OPTS: "-XX:+UseSerialGC -XX:MaxRAMPercentage=50"
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
       KAFKA_BOOTSTRAP: kafka:9092
@@ -259,8 +302,13 @@ services:
       dockerfile: ops/Dockerfile
       args:
         SERVICE: billing-service
+    # Hard ceiling. The JVM reads this cgroup limit for MaxRAMPercentage, so the two
+    # numbers are linked: changing one without the other either wastes memory or
+    # invites an OOM kill.
+    mem_limit: 320m
     environment:
       SERVER_PORT: "8080"
+      JAVA_OPTS: "-XX:+UseSerialGC -XX:MaxRAMPercentage=50"
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
       KAFKA_BOOTSTRAP: kafka:9092
@@ -285,6 +333,9 @@ services:
   prometheus:
     image: prom/prometheus:v2.54.1
     profiles: ["observability"]
+    # Memory scales with active time series. The SLO histogram buckets are the main driver,
+    # which is why ObservabilityDefaults enables them on an allow-list rather than globally.
+    mem_limit: 384m
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=6h"
@@ -299,6 +350,7 @@ services:
   grafana:
     image: grafana/grafana:11.2.0
     profiles: ["observability"]
+    mem_limit: 320m
     environment:
       # Local-only stack; anonymous admin keeps the load-test screenshots frictionless.
       GF_AUTH_ANONYMOUS_ENABLED: "true"

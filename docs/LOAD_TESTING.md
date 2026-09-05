@@ -26,7 +26,8 @@
 |---|---|
 | Host CPU / RAM | TBD |
 | Docker resource limits per service | TBD |
-| JVM flags | `-XX:+UseZGC -Xmx1g` (no pinning flag: JEP 491 made `jdk.tracePinnedThreads` a no-op on JDK 24+) |
+| JVM flags | Per service, set in `ops/docker-compose.yml`: **ZGC** on dispatch-api, location-service and matching-engine (the three with p99 SLOs); **SerialGC** on notification, billing and trip-service. `MaxRAMPercentage=50` against an explicit `mem_limit`. No pinning flag: JEP 491 made `jdk.tracePinnedThreads` a no-op on JDK 24+ |
+| Memory ceilings | infra 1216 MB, app services 2112 MB, observability 704 MB — **4032 MB total**. The dev container must be stopped first; both modes together exceed the VM |
 | Redis / Postgres / Kafka versions | 7.x / 16 / 3.7 KRaft |
 | Load generator location | Same host (network latency excluded — stated explicitly) |
 

@@ -123,6 +123,25 @@ Add observability (off by default to keep startup light):
 podman compose -f ops/docker-compose.yml --profile observability up -d
 ```
 
+### Two modes, never both at once
+
+The VM has a fixed memory budget and there are two ways to fill it. **Running both exhausts it** —
+this has already killed the machine once, and the symptom is containers stuck on "closing" rather
+than a graceful slowdown.
+
+| Mode | What runs | Budget |
+|---|---|---|
+| **Development** | infra + dev container | ~1.2 GB + ~2.8 GB = **~4.0 GB** |
+| **Full system** | infra + app services + observability | 1216 + 2112 + 704 = **~4.0 GB** |
+| Both | everything | **~6.8 GB** — over the cap |
+
+Every service carries an explicit `mem_limit`. That is not tidiness: `MaxRAMPercentage` is
+container-aware, so without a limit the JVM reads the VM's total memory and concludes it may grow
+its heap to several GB. Six services doing that is what caused the OOM.
+
+**Close the VS Code window before starting the full system.** `shutdownAction: stopCompose` stops
+the dev container, and the compose command below brings the infrastructure back up as a dependency.
+
 ### The full system
 
 Services live behind the `app` profile so routine dev-container work does not rebuild six images.
@@ -138,6 +157,9 @@ podman compose -f ops/docker-compose.yml --profile app --profile observability u
 | Grafana | `localhost:3000` — anonymous admin, "Ride Matching" folder |
 | Prometheus | `localhost:9090` — check Status → Targets if a panel is empty |
 | Services | `localhost:8080`–`8085` |
+
+`app-full` additionally starts `trip-service`, which is scaffold only today — it runs a JVM and
+does no work, so it is excluded from the default profile.
 
 Rebuild one service after a code change:
 

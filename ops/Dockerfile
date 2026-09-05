@@ -27,9 +27,18 @@ WORKDIR /app
 COPY --chown=app:app services/${SERVICE}/target/${SERVICE}-*-exec.jar /app/app.jar
 COPY --chown=app:app --chmod=755 ops/healthcheck.sh /app/healthcheck.sh
 
-# ZGC and a container-aware heap: the JVM reads cgroup limits, so MaxRAMPercentage adapts to
-# whatever the compose file grants rather than assuming the host's memory.
-ENV JAVA_OPTS="-XX:+UseZGC -XX:MaxRAMPercentage=70"
+# A default, not a decision: docker-compose.yml overrides JAVA_OPTS per service, choosing ZGC
+# for the three with p99 SLOs and SerialGC for the three that only log and count.
+#
+# MaxRAMPercentage is container-aware — the JVM reads its cgroup limit — but that only helps
+# if a limit exists. With none, the JVM sees the whole VM and concludes it may grow to several
+# GB, which is how six services exhausted the machine. Every service in compose has a
+# mem_limit for exactly this reason.
+#
+# 50, not 70: the limit covers heap PLUS metaspace, code cache, GC metadata, thread stacks and
+# direct buffers. Non-heap for a small Spring Boot service is ~150-200MB, so a 70% heap inside
+# a 320MB limit would be OOM-killed rather than merely tight.
+ENV JAVA_OPTS="-XX:+UseZGC -XX:MaxRAMPercentage=50"
 
 EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
