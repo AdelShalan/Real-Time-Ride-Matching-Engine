@@ -1,6 +1,5 @@
 package com.ridematching.dispatch.adapters.in.rest;
 
-import com.ridematching.dispatch.application.DriverAlreadyAssignedException;
 import com.ridematching.dispatch.application.RequestRideUseCase;
 import com.ridematching.dispatch.application.RideRequestOutcome;
 import com.ridematching.dispatch.application.port.IdempotencyStore;
@@ -9,12 +8,9 @@ import com.ridematching.domain.geo.Coordinates;
 import com.ridematching.domain.rider.RiderId;
 import com.ridematching.domain.trip.RideId;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,8 +32,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/rides")
 public class RideController {
-
-    private static final Logger log = LoggerFactory.getLogger(RideController.class);
 
     private final RequestRideUseCase requestRide;
     private final IdempotencyStore idempotency;
@@ -126,23 +120,8 @@ public class RideController {
         }
     }
 
-    /**
-     * The unique index fired: another worker holds this driver. Normal under contention, so
-     * it is a 409 rather than a 500 and is not logged at ERROR.
-     */
-    @ExceptionHandler(DriverAlreadyAssignedException.class)
-    public ResponseEntity<ProblemDetail> onDriverAlreadyAssigned(DriverAlreadyAssignedException e) {
-        log.debug("Driver already assigned: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(problem(HttpStatus.CONFLICT, "Driver unavailable",
-                        "That driver was assigned to another ride."));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ProblemDetail> onInvalidArgument(IllegalArgumentException e) {
-        return ResponseEntity.badRequest()
-                .body(problem(HttpStatus.BAD_REQUEST, "Invalid request", e.getMessage()));
-    }
+    // Exception handling lives in RestExceptionHandler so every endpoint answers alike and a
+    // new controller does not need handlers copied into it.
 
     private ProblemDetail problem(HttpStatus status, String title, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
