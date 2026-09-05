@@ -34,6 +34,10 @@ target/
 .DS_Store
 Thumbs.db
 
+# Scratch request payloads used when poking the API by hand
+ride.json
+*.request.json
+
 # Local env & secrets
 .env
 .env.*
