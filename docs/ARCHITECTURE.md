@@ -57,7 +57,7 @@ single most important decision in the system.
 **Responsibility:** terminate driver WebSocket connections, validate frames, and land positions in
 the geospatial index with minimal latency.
 
-**Connection model.** Java 21 virtual threads: one virtual thread per connection is affordable at
+**Connection model.** Java 25 virtual threads: one virtual thread per connection is affordable at
 10k connections (~1 KB stack each initially) where 10k platform threads would not be. This gives
 straight-line blocking code — readable and debuggable — with reactive-grade scalability.
 See [ADR-0006](adr/0006-java21-virtual-threads.md).
@@ -339,5 +339,5 @@ regression in the claim path.
 | 4 | Dispatch API + idempotency + Postgres schema ✅ |
 | 5 | Matching Engine + claim protocol + concurrency tests ✅ |
 | 6 | Kafka topology, outbox publisher, notification/billing consumers ✅ |
-| 7 | Prometheus + Grafana dashboards |
+| 7 | Prometheus + Grafana dashboards ✅ |
 | 8 | Simulator + k6 load harness, published results |

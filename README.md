@@ -1,6 +1,6 @@
 # Real-Time Ride-Matching Engine
 
-A production-shaped, event-driven dispatch backend in **Java 21**: it ingests high-frequency GPS
+A production-shaped, event-driven dispatch backend in **Java 25**: it ingests high-frequency GPS
 streams from thousands of drivers over WebSockets, indexes them geospatially in Redis, and matches
 riders to the nearest available driver — **guaranteeing that no driver is ever assigned to two rides**,
 even under thousands of concurrent requests.
@@ -245,7 +245,7 @@ Redis, Kafka, or Postgres running.
 
 ```
 ride-matching-engine/
-├── .devcontainer/               # JDK 21 + Maven sandbox (VS Code attaches here)
+├── .devcontainer/               # JDK 25 + Maven sandbox (VS Code attaches here)
 ├── docs/
 │   ├── ARCHITECTURE.md          # deep system design
 │   ├── LOAD_TESTING.md          # methodology + results
@@ -287,6 +287,9 @@ adapters/out/    Redis, Postgres, Kafka producer implementations
 
 Every service exposes `/actuator/prometheus`. The committed Grafana dashboard tracks:
 
+The dashboard is committed as JSON and provisioned automatically, so the panels a reviewer sees
+are the panels the load test was judged against — not something reconstructed by hand afterwards.
+
 - **RED metrics** per endpoint — rate, errors, duration (p50 / p95 / p99)
 - `matching_duration_seconds` — request-to-match end-to-end histogram
 - `match_success_ratio` and `match_attempts_per_ride` — dispatch quality
@@ -318,13 +321,24 @@ The project develops inside a **Dev Container**, so the only things needed on th
 and Podman — no JDK, no Maven, no database installs. Open the folder in VS Code and choose *Reopen in
 Container*.
 
-Infrastructure standalone:
+Infrastructure only — Postgres, Redis, Kafka (KRaft):
 
 ```bash
 podman compose -f ops/docker-compose.yml up -d
 ```
 
-Postgres, Redis, and Kafka (KRaft). Add `--profile observability` for Prometheus and Grafana.
+The whole system, including all six services and the observability stack:
+
+```bash
+./mvnw package -DskipTests && podman compose -f ops/docker-compose.yml --profile app --profile observability up -d --build
+```
+
+Grafana at `localhost:3000` (anonymous, dashboard pre-provisioned), Prometheus at `localhost:9090`,
+dispatch API at `localhost:8080`.
+
+The jars are built before the images rather than inside them: a multi-stage build would recompile
+the whole reactor once per service, and the jar is a build artifact, not a source input.
+
 Full setup and troubleshooting: **[docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)**.
 
 *Implementation in progress — the architecture above is the contract the code is being built against.*

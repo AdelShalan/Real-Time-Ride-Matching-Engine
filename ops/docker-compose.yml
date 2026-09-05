@@ -85,6 +85,203 @@ services:
     networks:
       - ride-net
 
+  # ---------------------------------------------------------------------------------
+  # Application services. Behind the "app" profile so day-to-day dev container work does
+  # not rebuild six images; the load test and the Grafana dashboards need them running:
+  #
+  #   ./mvnw package -DskipTests
+  #   podman compose -f ops/docker-compose.yml --profile app --profile observability up -d --build
+  # ---------------------------------------------------------------------------------
+  dispatch-api:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+      args:
+        SERVICE: dispatch-api
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ride
+      POSTGRES_USER: ride
+      POSTGRES_PASSWORD: ride
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      # See ops/healthcheck.sh: a dependency-free probe that asserts the response body says
+      # UP, not merely that the port accepts connections.
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - ride-net
+
+  location-service:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+      args:
+        SERVICE: location-service
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8081:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      # See ops/healthcheck.sh: a dependency-free probe that asserts the response body says
+      # UP, not merely that the port accepts connections.
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - ride-net
+
+  matching-engine:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+      args:
+        SERVICE: matching-engine
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8082:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      # See ops/healthcheck.sh: a dependency-free probe that asserts the response body says
+      # UP, not merely that the port accepts connections.
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - ride-net
+
+  trip-service:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+      args:
+        SERVICE: trip-service
+    environment:
+      SERVER_PORT: "8080"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ride
+      POSTGRES_USER: ride
+      POSTGRES_PASSWORD: ride
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      # See ops/healthcheck.sh: a dependency-free probe that asserts the response body says
+      # UP, not merely that the port accepts connections.
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - ride-net
+
+  notification-service:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+      args:
+        SERVICE: notification-service
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8084:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      # See ops/healthcheck.sh: a dependency-free probe that asserts the response body says
+      # UP, not merely that the port accepts connections.
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - ride-net
+
+  billing-service:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+      args:
+        SERVICE: billing-service
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP: kafka:9092
+    ports:
+      - "8085:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      # See ops/healthcheck.sh: a dependency-free probe that asserts the response body says
+      # UP, not merely that the port accepts connections.
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - ride-net
+
   prometheus:
     image: prom/prometheus:v2.54.1
     profiles: ["observability"]

@@ -1,6 +1,6 @@
 # Development Environment
 
-The host runs **only VS Code and Podman**. JDK 21, Maven, Postgres, Redis, and Kafka all live in
+The host runs **only VS Code and Podman**. JDK 25, Maven, Postgres, Redis, and Kafka all live in
 containers and leave no trace on the machine. Rationale in [ADR-0007](adr/0007-containerized-dev-environment.md).
 
 ```
@@ -9,7 +9,7 @@ containers and leave no trace on the machine. Rationale in [ADR-0007](adr/0007-c
       ▼
 [ podman machine — a WSL 2 Linux VM ]
       │
-      ├── workspace container   JDK 21, Maven, Git   <- VS Code attaches here
+      ├── workspace container   JDK 25, Maven, Git   <- VS Code attaches here
       ├── postgres:16-alpine    :5432
       ├── redis:7-alpine        :6379
       ├── kafka (KRaft)         :9092 internal / :29092 from Windows
@@ -121,6 +121,29 @@ Add observability (off by default to keep startup light):
 
 ```bash
 podman compose -f ops/docker-compose.yml --profile observability up -d
+```
+
+### The full system
+
+Services live behind the `app` profile so routine dev-container work does not rebuild six images.
+Jars first, then images:
+
+```bash
+./mvnw package -DskipTests
+podman compose -f ops/docker-compose.yml --profile app --profile observability up -d --build
+```
+
+| | |
+|---|---|
+| Grafana | `localhost:3000` — anonymous admin, "Ride Matching" folder |
+| Prometheus | `localhost:9090` — check Status → Targets if a panel is empty |
+| Services | `localhost:8080`–`8085` |
+
+Rebuild one service after a code change:
+
+```bash
+./mvnw package -DskipTests -pl services/dispatch-api -am
+podman compose -f ops/docker-compose.yml --profile app up -d --build dispatch-api
 ```
 
 ### Kafka topics

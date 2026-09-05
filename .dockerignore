@@ -1,0 +1,12 @@
+# Only the built jars are needed by the image; everything else just slows the build context.
+.git
+.github
+docs
+loadtest
+simulator
+**/src
+**/*.md
+.devcontainer
+.mvn
+mvnw
+mvnw.cmd
