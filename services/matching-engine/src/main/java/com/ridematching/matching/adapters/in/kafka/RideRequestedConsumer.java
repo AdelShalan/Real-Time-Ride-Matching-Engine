@@ -82,6 +82,7 @@ public class RideRequestedConsumer {
                     request.rideId(),
                     driver.driverId().value(),
                     driver.fenceToken(),
+                    driver.offerToken(),
                     driver.distanceMeters(),
                     clock.instant()));
         } else {

@@ -173,8 +173,25 @@ than claimed as implemented.
 
 Owns the trip state machine and Postgres. Every transition is validated against an explicit
 transition table; an illegal transition throws rather than being coerced. Each successful transition
-writes a `trip_events` row (append-only audit log) and an `outbox` row in the **same transaction** as
-the trip update.
+writes a `trip_events` row (append-only audit log), and a transition that downstream consumers act on
+also writes an `outbox` row in the **same transaction** as the trip update.
+
+Two inputs, and the split matters. From Kafka it consumes `ride.matched.v1` and makes the assignment
+durable — this is the write the `uniq_driver_active_trip` index arbitrates, and the only place in the
+system where that guarantee can fire. Over HTTP it serves the four lifecycle transitions
+(`accept`, `start`, `complete`, `cancel`) that a driver or rider drives directly.
+
+**It is also where drivers re-enter the pool.** A claim is a driver withdrawn from matching, and
+every terminal transition releases it — after the Postgres commit, never before. Two loops back that
+up: the outbox drain (200 ms) and a claim reconciler (30 s) that releases claims Postgres says no
+trip is holding. The reconciler only considers claims with no TTL, which is a condition that only
+`markOnTrip` produces; a claim still carrying one is either an offer in flight or something that will
+expire by itself, and freeing either would take a driver from a match about to land.
+
+Schema ownership: the migrations live in `libs/schema`, not in either service. Two services write
+these tables now, and a schema kept inside one of its consumers is a schema that consumer can change
+without the other noticing. Both run Flyway from the identical set; Flyway's advisory lock makes the
+concurrent startup safe.
 
 ### 3.5 Notification & Billing Services
 
@@ -341,3 +358,9 @@ regression in the claim path.
 | 6 | Kafka topology, outbox publisher, notification/billing consumers ✅ |
 | 7 | Prometheus + Grafana dashboards ✅ |
 | 8 | Simulator + k6 load harness, published results |
+
+Between phases 7 and 8: the trip lifecycle was made reachable. The state machine, the claim release,
+and the `RideMatched` consumer that persists an assignment had all been built and none were wired to
+anything a caller could invoke — so no trip ever left `REQUESTED`, the unique index was never
+exercised in a running system, and no driver was ever handed back. Load testing an engine whose
+driver pool drains monotonically would have measured the leak rather than the design.

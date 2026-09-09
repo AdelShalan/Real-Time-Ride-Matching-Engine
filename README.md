@@ -147,6 +147,11 @@ sequenceDiagram
     Note over PG: UNIQUE INDEX ON trips(driver_id)<br/>WHERE status IN (OFFERED, ACCEPTED, IN_PROGRESS)
     PG-->>W1: committed
     W1->>R: confirm claim, extend to trip lifetime
+
+    Note over W1,PG: ... trip runs ...
+    W1->>PG: UPDATE trip SET status=COMPLETED (version-checked)
+    PG-->>W1: committed
+    W1->>R: release claim (token-checked) — D-42 back in the pool
 ```
 
 - **Layer 1 — Redis Lua CAS (fast path).** A single Lua script does compare-and-set on the driver's
@@ -160,6 +165,12 @@ sequenceDiagram
 - **Fencing tokens.** Each claim carries a monotonic `INCR` token. A worker that stalled past its
   lease and wakes up late writes a stale token and is rejected — the failure mode that plain
   distributed locks silently allow.
+- **Release, and a reconciler behind it.** A claim taken is a driver removed from the pool, so every
+  terminal transition hands them back. The release is *after* the Postgres commit, never before —
+  the durable write is the one that decides. That ordering leaves a window: a crash in between frees
+  nothing, and an accepted trip's claim has had its TTL removed so nothing expires to clean it up.
+  A background reconciler closes it by releasing claims Postgres says no trip is holding. It syncs
+  Redis *from* Postgres and never the other way, because only that direction can be correct.
 
 **On Redlock:** deliberately not used. Redlock's safety argument depends on bounded clock drift and
 bounded GC pauses, and it offers no protection against a lease expiring while the holder is still
@@ -187,6 +198,7 @@ a publisher drains the outbox. No lost events, no phantom events.
 | `ride.matched.v1` | `rideId` | 12 | 7 d | Fan-out to notification + billing |
 | `ride.unmatched.v1` | `rideId` | 6 | 7 d | No driver found within the SLA window |
 | `ride.completed.v1` | `rideId` | 12 | 7 d | Billing trigger |
+| `ride.cancelled.v1` | `rideId` | 6 | 7 d | Stands down notification; no fare |
 | `*.dlt` | — | 3 | 30 d | Dead letters after retry exhaustion |
 
 Keying by `rideId` guarantees per-ride ordering; keying location by `driverId` guarantees a driver's
@@ -233,8 +245,31 @@ stateDiagram-v2
     UNMATCHED --> [*]
 ```
 
-Every transition is guarded server-side; illegal transitions are rejected rather than silently
-tolerated, and each one emits a domain event.
+Every transition is guarded server-side and rejected rather than silently tolerated: the transition
+table is declared once, in `TripStatus`, and the aggregate has no status setter to route around it.
+`IN_PROGRESS` deliberately has no path to `CANCELLED` — aborting a journey already under way is a
+different business process with its own fare implications, not a cancellation.
+
+Not every transition publishes an event. `ride.completed.v1` and `ride.cancelled.v1` go through the
+outbox because billing and notification act on them; `accept` and `start` are recorded in the
+append-only `trip_events` trail and nothing more, because no consumer exists that would read them.
+Publishing a topic nobody subscribes to is a contract to maintain for nothing.
+
+`trip-service` exposes the transitions over HTTP, separately from ride creation:
+
+| | |
+|---|---|
+| `POST /v1/rides` (`:8080`) | Create a ride. Returns `202` — matching is asynchronous. |
+| `POST /v1/trips/{id}/accept` (`:8083`) | Driver takes the offer. Pins the Redis claim for the journey. |
+| `POST /v1/trips/{id}/start` | Rider picked up. |
+| `POST /v1/trips/{id}/complete` | Dropoff. Terminal; releases the driver. |
+| `POST /v1/trips/{id}/cancel` | Called off. Terminal; releases the driver. Refused once `IN_PROGRESS`. |
+| `GET /v1/trips/{id}` | Current state and assigned driver. |
+
+The lifecycle calls are synchronous where ride creation is not. A driver tapping *accept* needs to
+know immediately whether someone else got there first; a rider requesting a ride does not need the
+socket held open while the engine searches. Concurrent transitions are arbitrated by an optimistic
+version check and lose with `409` plus `Retry-After`.
 
 ---
 
@@ -260,7 +295,8 @@ ride-matching-engine/
 ├── libs/
 │   ├── domain/                  # pure domain model + ports (no Spring)
 │   ├── events/                  # versioned event schemas
-│   └── platform/                # observability, Kafka/Redis config
+│   ├── platform/                # observability, outbox, Kafka/Redis config
+│   └── schema/                  # Flyway migrations (shared: two services write these tables)
 ├── simulator/                   # driver + rider simulation harness
 ├── loadtest/                    # k6 scenarios
 ├── ops/

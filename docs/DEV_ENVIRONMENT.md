@@ -132,8 +132,8 @@ than a graceful slowdown.
 | Mode | What runs | Budget |
 |---|---|---|
 | **Development** | infra + dev container | ~1.2 GB + ~2.8 GB = **~4.0 GB** |
-| **Full system** | infra + app services + observability | 1216 + 2112 + 704 = **~4.0 GB** |
-| Both | everything | **~6.8 GB** — over the cap |
+| **Full system** | infra + app services + observability | 1216 + 2560 + 704 = **~4.5 GB** |
+| Both | everything | **~7.3 GB** — over the cap |
 
 Every service carries an explicit `mem_limit`. That is not tidiness: `MaxRAMPercentage` is
 container-aware, so without a limit the JVM reads the VM's total memory and concludes it may grow
@@ -158,8 +158,36 @@ podman compose -f ops/docker-compose.yml --profile app --profile observability u
 | Prometheus | `localhost:9090` — check Status → Targets if a panel is empty |
 | Services | `localhost:8080`–`8085` |
 
-`app-full` additionally starts `trip-service`, which is scaffold only today — it runs a JVM and
-does no work, so it is excluded from the default profile.
+### Driving a trip by hand
+
+`dispatch-api` creates the trip; `trip-service` moves it. Request a ride first, then take its
+`rideId` through the lifecycle:
+
+```bash
+curl -X POST localhost:8083/v1/trips/$RIDE_ID/accept
+```
+
+```bash
+curl -X POST localhost:8083/v1/trips/$RIDE_ID/start
+```
+
+```bash
+curl -X POST localhost:8083/v1/trips/$RIDE_ID/complete
+```
+
+Cancelling needs a reason, and is refused once the trip is `IN_PROGRESS`:
+
+```bash
+curl -X POST localhost:8083/v1/trips/$RIDE_ID/cancel -H 'Content-Type: application/json' -d '{"reason":"rider changed their mind"}'
+```
+
+`accept` only works on a trip that reached `OFFERED`, which means the matching engine must have
+found a driver — so there has to be at least one driver in the Redis index first. `GET
+/v1/trips/{id}` shows the current state and the assigned driver.
+
+All six services are in the `app` profile. `trip-service` used to sit behind `app-full` while it
+was scaffold; it now owns the trip lifecycle and the claim release, and running the stack without
+it means matched drivers are never handed back — the pool drains and the match rate quietly falls.
 
 Rebuild one service after a code change:
 

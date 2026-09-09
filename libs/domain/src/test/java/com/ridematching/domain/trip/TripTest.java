@@ -38,7 +38,7 @@ class TripTest {
 
     private Trip tripWithOffer(DriverId driver) {
         Trip trip = tripInMatching();
-        trip.offerTo(driver, 1L);
+        trip.offerTo(driver, 1L, "offer-1");
         return trip;
     }
 
@@ -92,7 +92,7 @@ class TripTest {
             trip.beginMatching();
             assertThat(trip.status()).isEqualTo(TripStatus.MATCHING);
 
-            trip.offerTo(driver, 8817L);
+            trip.offerTo(driver, 8817L, "offer-8817");
             assertThat(trip.status()).isEqualTo(TripStatus.OFFERED);
             assertThat(trip.assignedDriver()).contains(driver);
             assertThat(trip.fenceToken()).contains(8817L);
@@ -115,7 +115,7 @@ class TripTest {
         void historyRecordsEveryStep() {
             Trip trip = newTrip();
             trip.beginMatching();
-            trip.offerTo(DriverId.newId(), 1L);
+            trip.offerTo(DriverId.newId(), 1L, "offer-1");
             trip.accept();
             trip.startTrip();
             trip.complete();
@@ -157,11 +157,11 @@ class TripTest {
 
             // A stale worker waking up late and replaying its old claim must be rejected:
             // this is the failure mode plain lease locks allow (ADR-0004).
-            assertThatThrownBy(() -> trip.offerTo(DriverId.newId(), 1L))
+            assertThatThrownBy(() -> trip.offerTo(DriverId.newId(), 1L, "offer-1"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Stale fence token");
 
-            trip.offerTo(DriverId.newId(), 2L);
+            trip.offerTo(DriverId.newId(), 2L, "offer-2");
             assertThat(trip.status()).isEqualTo(TripStatus.OFFERED);
         }
 
@@ -170,7 +170,7 @@ class TripTest {
         void rejectsNonPositiveFenceToken() {
             Trip trip = tripInMatching();
 
-            assertThatThrownBy(() -> trip.offerTo(DriverId.newId(), 0L))
+            assertThatThrownBy(() -> trip.offerTo(DriverId.newId(), 0L, "offer-0"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 

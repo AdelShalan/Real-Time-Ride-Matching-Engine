@@ -223,7 +223,10 @@ services:
       - ride-net
 
   trip-service:
-    profiles: ["app-full"]
+    # Moved out of app-full and into app: this service owns the trip lifecycle and the
+    # claim release, so without it a matched driver is never handed back and the pool
+    # drains over the course of a load test.
+    profiles: ["app"]
     build:
       context: ..
       dockerfile: ops/Dockerfile
@@ -232,20 +235,30 @@ services:
     # Hard ceiling. The JVM reads this cgroup limit for MaxRAMPercentage, so the two
     # numbers are linked: changing one without the other either wastes memory or
     # invites an OOM kill.
-    mem_limit: 320m
+    #
+    # Raised from 320m along with the collector. This is no longer a scaffold that runs a
+    # JVM and does nothing: it holds a connection pool, a Kafka consumer group and a Redis
+    # client, and it serves the lifecycle transitions a driver waits on.
+    mem_limit: 448m
     environment:
       SERVER_PORT: "8080"
-      JAVA_OPTS: "-XX:+UseSerialGC -XX:MaxRAMPercentage=50"
+      # ZGC, not SerialGC. A driver tapping accept is waiting on this response, so pause
+      # time matters here in a way it does not for the fire-and-forget consumers.
+      JAVA_OPTS: "-XX:+UseZGC -XX:MaxRAMPercentage=50"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ride
       POSTGRES_USER: ride
       POSTGRES_PASSWORD: ride
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
       KAFKA_BOOTSTRAP: kafka:9092
     ports:
       - "8083:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       kafka:
         condition: service_healthy

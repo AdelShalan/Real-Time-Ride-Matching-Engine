@@ -7,5 +7,34 @@ spring:
   config:
     import: "classpath:platform-defaults.yml"
 
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:ride}
+    username: ${POSTGRES_USER:ride}
+    password: ${POSTGRES_PASSWORD:ride}
+    hikari:
+      # Smaller than dispatch-api's 20. That service fields every ride request; this one
+      # handles four lifecycle transitions per trip plus two background loops, so its
+      # concurrency ceiling is genuinely lower. Both pools draw on one PostgreSQL, and
+      # sizing each for its own peak rather than copying a number is what keeps the sum
+      # inside what the database can serve.
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 3000
+
+  flyway:
+    enabled: true
+    # Migrations come from the shared schema module, not this service. dispatch-api runs the
+    # identical set; Flyway's advisory lock makes the concurrent startup safe.
+    baseline-on-migrate: false
+
+ridematching:
+  trip:
+    # How often to drain the outbox to Kafka. An event sitting here is a notification the
+    # rider has not received, so this is on the critical timeline, not a housekeeping job.
+    outbox-interval: PT0.2S
+    # How often to sweep Redis for claims PostgreSQL says nothing is holding. A safety net for
+    # a crash between the terminal commit and the release, not a hot path — see ClaimReconciler.
+    reconcile-interval: PT30S
+
 server:
   port: 8083

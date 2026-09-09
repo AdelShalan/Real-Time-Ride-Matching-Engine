@@ -52,6 +52,18 @@ public final class RedisKeys {
     }
 
     /**
+     * {@code SCAN} pattern matching every claim marker in this city.
+     *
+     * <p>Here rather than assembled by the caller for the same reason every other key is: a
+     * pattern built somewhere else is a second definition of the layout, and the first time
+     * the two drift the scan silently matches nothing. A reconciler that finds no stranded
+     * claims because its glob is wrong looks exactly like one with nothing to do.
+     */
+    public String claimPattern() {
+        return "claim:{%s}:*".formatted(city);
+    }
+
+    /**
      * Monotonic source of fencing tokens.
      *
      * <p>One counter per city, incremented by the Lua script. Monotonicity is what lets a

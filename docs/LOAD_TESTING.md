@@ -59,6 +59,23 @@
 | **Load** | 5,000 ride requests concentrated in a 1 km² area against only 200 available drivers |
 | **Pass** | **Zero** drivers with more than one active trip; every request resolves to `ACCEPTED` or `UNMATCHED`; no unhandled exceptions; contention counter is non-zero (proving the race was actually exercised — a green result with zero contention proves nothing) |
 
+Watch `trip_assignment_rejected_total` alongside `driver_claim_contention_total`. The first counts
+losses at the Redis claim, the second losses at the unique index — the two layers, each visible. A run
+where the index never fires has not reached past layer one.
+
+### S3b — Driver pool conservation
+
+| | |
+|---|---|
+| **Goal** | Prove drivers come back, so the other scenarios measure the design and not a leak |
+| **Load** | 2,000 trips driven to a terminal state — a 70/30 split of `complete` and `cancel` — against a fixed 500-driver pool, sustained long enough for each driver to be reused several times |
+| **Pass** | `driver_claim_released_total` ≈ completions + cancellations; the number of drivers `RESERVED`/`ON_TRIP` in Redis at the end matches the trips still in flight; `driver_claim_reclaimed_total` = 0; match success rate flat across the run |
+
+The last two are the ones with teeth. A rising reclaim count means the release path is failing and
+the reconciler is covering for it, and a match rate that *declines* over a run against a fixed pool is
+the signature of a pool draining — which is exactly the state the system was in before the lifecycle
+was wired up, and which every other scenario here would have silently inherited.
+
 ### S4 — Idempotency under retry storm
 
 | | |
@@ -127,6 +144,7 @@ terminal state.
 | S1 Ingestion soak | 10k updates/s, p99 < 50 ms | TBD | TBD |
 | S2 Request burst | 500 req/s, match p99 < 500 ms | TBD | TBD |
 | S3 Contention | 0 double-assignments | TBD | TBD |
+| S3b Pool conservation | 0 leaked claims | TBD | TBD |
 | S4 Idempotency | 0 duplicate rides | TBD | TBD |
 | S5 Chaos | Graceful degradation | TBD | TBD |
 | S6 Breaking point | — | TBD | TBD |

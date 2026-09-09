@@ -43,6 +43,7 @@ public final class Trip {
     private TripStatus status;
     private DriverId driverId;
     private Long fenceToken;
+    private String offerToken;
     private Instant matchedAt;
     private Instant completedAt;
 
@@ -51,17 +52,17 @@ public final class Trip {
                  Coordinates pickup,
                  Coordinates dropoff,
                  VehicleClass vehicleClass,
-                 Clock clock) {
+                 Clock clock,
+                 Instant requestedAt,
+                 TripStatus status) {
         this.id = Objects.requireNonNull(id, "id");
         this.riderId = Objects.requireNonNull(riderId, "riderId");
         this.pickup = Objects.requireNonNull(pickup, "pickup");
         this.dropoff = Objects.requireNonNull(dropoff, "dropoff");
         this.vehicleClass = Objects.requireNonNull(vehicleClass, "vehicleClass");
         this.clock = Objects.requireNonNull(clock, "clock");
-        this.requestedAt = clock.instant();
-        this.status = TripStatus.REQUESTED;
-        this.history.add(new TripTransition(null, TripStatus.REQUESTED, null,
-                "rider requested a trip", this.requestedAt));
+        this.requestedAt = Objects.requireNonNull(requestedAt, "requestedAt");
+        this.status = Objects.requireNonNull(status, "status");
     }
 
     /** Creates a newly requested trip using the system clock. */
@@ -86,7 +87,51 @@ public final class Trip {
                                Coordinates dropoff,
                                VehicleClass vehicleClass,
                                Clock clock) {
-        return new Trip(id, riderId, pickup, dropoff, vehicleClass, clock);
+        Trip trip = new Trip(id, riderId, pickup, dropoff, vehicleClass, clock,
+                clock.instant(), TripStatus.REQUESTED);
+        trip.history.add(new TripTransition(null, TripStatus.REQUESTED, null,
+                "rider requested a trip", trip.requestedAt));
+        return trip;
+    }
+
+    /**
+     * Rebuilds a trip from its persisted state.
+     *
+     * <p><strong>This is the one door into the aggregate that does not go through the
+     * transition table</strong>, and it is for persistence adapters only. A trip loaded from
+     * the database is already in whatever state it reached; replaying it forward through
+     * {@code beginMatching -> offerTo -> accept} would invent history that did not happen and
+     * would rewrite the timestamps that make the audit trail worth keeping.
+     *
+     * <p>What it does not skip is the invariant: a snapshot whose status holds a driver but
+     * carries none is rejected in {@link TripSnapshot}'s constructor rather than loaded. The
+     * guard that matters — "can this trip legally move to that state" — still applies to every
+     * transition made after loading, which is the whole reason the aggregate is reconstructed
+     * instead of the adapter updating columns directly.
+     *
+     * <p>History is not restored. The durable audit trail lives in {@code trip_events}, and
+     * loading it on every state change would read rows nobody looks at to answer a question
+     * ({@code what may this trip do next}) that only needs the current status. Transitions made
+     * after rehydration append to a fresh list, and the adapter persists only those.
+     */
+    public static Trip rehydrate(TripSnapshot snapshot, Clock clock) {
+        Objects.requireNonNull(snapshot, "snapshot");
+        Trip trip = new Trip(snapshot.id(), snapshot.riderId(), snapshot.pickup(),
+                snapshot.dropoff(), snapshot.vehicleClass(), clock,
+                snapshot.requestedAt(), snapshot.status());
+
+        trip.driverId = snapshot.driverId();
+        trip.fenceToken = snapshot.fenceToken();
+        trip.offerToken = snapshot.offerToken();
+        trip.matchedAt = snapshot.matchedAt();
+        trip.completedAt = snapshot.completedAt();
+        return trip;
+    }
+
+    /** The current state, flattened for persistence. See {@link #rehydrate}. */
+    public TripSnapshot snapshot() {
+        return new TripSnapshot(id, riderId, pickup, dropoff, vehicleClass, status,
+                driverId, fenceToken, offerToken, requestedAt, matchedAt, completedAt);
     }
 
     // ---------------------------------------------------------------- transitions
@@ -103,9 +148,13 @@ public final class Trip {
      * @param fenceToken monotonic token from the Redis claim; a later write carrying a
      *                   lower token is rejected, which is what makes an expired lease safe
      *                   (ADR-0004)
+     * @param offerToken the claim's opaque token, retained because releasing the Redis claim
+     *                   later requires proving ownership of it. A trip that holds a driver
+     *                   without it could never hand that driver back except by TTL expiry.
      */
-    public void offerTo(DriverId driver, long fenceToken) {
+    public void offerTo(DriverId driver, long fenceToken, String offerToken) {
         Objects.requireNonNull(driver, "driver");
+        Objects.requireNonNull(offerToken, "offerToken");
         if (fenceToken <= 0) {
             throw new IllegalArgumentException("Fence token must be positive, was " + fenceToken);
         }
@@ -115,6 +164,7 @@ public final class Trip {
         }
         this.driverId = driver;
         this.fenceToken = fenceToken;
+        this.offerToken = offerToken;
         transitionTo(TripStatus.OFFERED, "offer sent to driver " + driver);
     }
 
@@ -209,6 +259,17 @@ public final class Trip {
 
     public Optional<Long> fenceToken() {
         return Optional.ofNullable(fenceToken);
+    }
+
+    /**
+     * The Redis claim token for the current driver, if one is held.
+     *
+     * <p>Read this <em>before</em> a transition that gives the driver up ({@link #cancel},
+     * {@link #markUnmatched}, {@link #releaseOffer}): those clear the assignment, and the
+     * token is what the claim store requires to release it.
+     */
+    public Optional<String> offerToken() {
+        return Optional.ofNullable(offerToken);
     }
 
     public Instant requestedAt() {

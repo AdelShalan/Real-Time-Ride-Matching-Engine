@@ -17,4 +17,86 @@
 
   <!-- Common dependencies and the Spring Boot repackage goal are inherited from
        services/pom.xml. Add only what is specific to this service. -->
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <!-- The STARTER, not bare spring-kafka. Boot 4 splits auto-configuration into
+         per-technology modules, and the bare library brings none of it: listeners are
+         simply never registered, with no error to explain why. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
+    </dependency>
+
+    <!--
+      Redis, for the claim store. This service does not search the geo index, but it is the
+      one that hands drivers back: a trip reaching a terminal state releases the claim that
+      the matching engine took. Sharing the geoindex module rather than reimplementing the
+      release script is the point — the token check that makes release safe lives in one
+      place.
+    -->
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>geoindex</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>schema</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-kafka</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- No Redis module: there is no dedicated Testcontainers one for it, and a
+         GenericContainer on the image the stack actually runs is what the geoindex tests
+         already use. -->
+
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>
