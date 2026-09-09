@@ -77,12 +77,12 @@ public class TripLifecycle {
 
     /** The driver accepted the offer. No event: nothing downstream acts on an acceptance yet. */
     public TripStatus accept(RideId rideId) {
-        return transition(rideId, Trip::accept, null, accepted);
+        return transition(rideId, trip -> trip.accept(), null, accepted);
     }
 
     /** The rider is in the vehicle. */
     public TripStatus start(RideId rideId) {
-        return transition(rideId, Trip::startTrip, null, started);
+        return transition(rideId, trip -> trip.startTrip(), null, started);
     }
 
     /**
@@ -90,7 +90,7 @@ public class TripLifecycle {
      * the pool.
      */
     public TripStatus complete(RideId rideId) {
-        return transition(rideId, Trip::complete,
+        return transition(rideId, trip -> trip.complete(),
                 (trip, held) -> new RideCompleted(UUID.randomUUID(), trip.id().value(),
                         held.driverId() == null ? null : held.driverId().value(),
                         trip.directDistanceMeters(), clock.instant()),
@@ -118,7 +118,7 @@ public class TripLifecycle {
      * transition guard would.
      */
     public Optional<Trip> find(RideId rideId) {
-        return trips.load(rideId).map(TripStore.Versioned::trip);
+        return trips.load(rideId).map(loaded -> loaded.trip());
     }
 
     private TripStatus transition(RideId rideId,

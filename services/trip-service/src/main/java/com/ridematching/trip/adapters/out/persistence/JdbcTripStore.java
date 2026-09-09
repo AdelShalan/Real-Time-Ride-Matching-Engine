@@ -124,9 +124,9 @@ public class JdbcTripStore implements TripStore {
                              CAST(:toStatus AS trip_status), :driverId, :reason, :occurredAt)
                         """)
                 .param("tripId", rideId.value())
-                .param("fromStatus", transition.previousState().map(Enum::name).orElse(null))
+                .param("fromStatus", transition.previousState().map(status -> status.name()).orElse(null))
                 .param("toStatus", transition.to().name())
-                .param("driverId", transition.driver().map(DriverId::value).orElse(null))
+                .param("driverId", transition.driver().map(driver -> driver.value()).orElse(null))
                 .param("reason", transition.reason())
                 .param("occurredAt", Timestamp.from(transition.occurredAt()))
                 .update();

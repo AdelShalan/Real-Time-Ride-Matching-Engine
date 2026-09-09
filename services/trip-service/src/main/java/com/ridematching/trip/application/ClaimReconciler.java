@@ -128,7 +128,7 @@ public class ClaimReconciler {
      * trip per key becomes a load source of its own.
      */
     private List<Candidate> withoutActiveTrip(List<Candidate> candidates) {
-        List<UUID> ids = candidates.stream().map(Candidate::driverId).toList();
+        List<UUID> ids = candidates.stream().map(candidate -> candidate.driverId()).toList();
 
         Set<UUID> active = Set.copyOf(jdbc.sql("""
                         SELECT driver_id FROM trips

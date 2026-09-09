@@ -1,6 +1,5 @@
 package com.ridematching.trip.adapters.in.rest;
 
-import com.ridematching.domain.driver.DriverId;
 import com.ridematching.domain.trip.Trip;
 
 import java.util.UUID;
@@ -19,6 +18,6 @@ public record TripResponseDto(UUID rideId, String status, UUID driverId) {
         return new TripResponseDto(
                 trip.id().value(),
                 trip.status().name(),
-                trip.assignedDriver().map(DriverId::value).orElse(null));
+                trip.assignedDriver().map(driver -> driver.value()).orElse(null));
     }
 }
