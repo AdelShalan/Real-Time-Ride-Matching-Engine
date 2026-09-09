@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.ridematching</groupId>
+    <artifactId>ride-matching-engine</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>schema</artifactId>
+  <name>schema</name>
+  <description>Flyway migrations for the shared PostgreSQL database.</description>
+
+  <!--
+    Resources only: no Java, no dependencies.
+
+    These migrations began in dispatch-api because it was the only service touching
+    PostgreSQL. trip-service now owns the trip lifecycle and writes the same tables, and a
+    schema that lives inside one of its two consumers is a schema one of them can change
+    without the other noticing. Moving it here makes the database what it actually is —
+    shared infrastructure that neither service owns alone — and gives both the identical
+    migration set on the classpath.
+
+    BOTH services run Flyway against it at startup, which is safe because they run the SAME
+    migrations: Flyway takes a PostgreSQL advisory lock before migrating, so a concurrent
+    starter waits rather than racing, and whichever arrives second finds the history table
+    already current and does nothing. The failure mode worth avoiding was never concurrency;
+    it was two services holding two different ideas of what the schema is.
+  -->
+</project>

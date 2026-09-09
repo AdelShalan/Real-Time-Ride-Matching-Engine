@@ -1,10 +1,10 @@
 package com.ridematching.dispatch;
 
-import com.ridematching.dispatch.adapters.out.messaging.JdbcOutboxWriter;
-import com.ridematching.dispatch.adapters.out.messaging.OutboxPublisher;
+import com.ridematching.platform.outbox.JdbcOutboxWriter;
+import com.ridematching.platform.outbox.OutboxPublisher;
 import com.ridematching.dispatch.adapters.out.persistence.JdbcIdempotencyStore;
 import com.ridematching.dispatch.adapters.out.persistence.JdbcTripRepository;
-import com.ridematching.dispatch.application.port.OutboxWriter;
+import com.ridematching.platform.outbox.OutboxWriter;
 import com.ridematching.dispatch.application.RequestRideUseCase;
 import com.ridematching.dispatch.application.port.IdempotencyStore;
 import com.ridematching.dispatch.application.port.TripRepository;

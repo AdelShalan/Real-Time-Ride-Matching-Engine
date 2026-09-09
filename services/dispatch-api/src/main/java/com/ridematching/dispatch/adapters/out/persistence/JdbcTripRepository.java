@@ -1,7 +1,7 @@
 package com.ridematching.dispatch.adapters.out.persistence;
 
 import com.ridematching.dispatch.application.DriverAlreadyAssignedException;
-import com.ridematching.dispatch.application.port.OutboxWriter;
+import com.ridematching.platform.outbox.OutboxWriter;
 import com.ridematching.dispatch.application.port.TripRepository;
 import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;

@@ -1,9 +1,11 @@
 -- Initial schema for the ride-matching engine.
 --
--- Schema ownership note: these migrations live in dispatch-api because it is currently the
--- only service that touches PostgreSQL. When trip-service takes over the trip lifecycle it
--- inherits them; two services running Flyway against one database independently is a race,
--- not a design.
+-- Schema ownership note: these migrations live in their own module because two services now
+-- write these tables — dispatch-api creates trips, trip-service moves them through the
+-- lifecycle. A schema kept inside one of its consumers is a schema that consumer can change
+-- without the other noticing. Both run Flyway from this same set at startup, which is safe:
+-- Flyway takes a PostgreSQL advisory lock, so the second starter waits and then finds
+-- nothing to do. See libs/schema/pom.xml.
 --
 -- No PostGIS yet, deliberately. ADR-0002 keeps PostGIS for geofences and zone analytics, and
 -- none of those queries exist. Plain numeric columns hold the coordinates until there is a

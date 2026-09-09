@@ -48,6 +48,12 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-flyway</artifactId>
     </dependency>
+    <!-- Migrations themselves live in the shared schema module: two services write these
+         tables, so neither owns the DDL. -->
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>schema</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>

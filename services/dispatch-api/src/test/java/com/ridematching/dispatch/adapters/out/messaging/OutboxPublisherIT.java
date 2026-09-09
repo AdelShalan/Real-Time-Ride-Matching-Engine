@@ -6,6 +6,7 @@ import com.ridematching.domain.driver.VehicleClass;
 import com.ridematching.domain.geo.Coordinates;
 import com.ridematching.domain.rider.RiderId;
 import com.ridematching.events.Topics;
+import com.ridematching.platform.outbox.OutboxPublisher;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;

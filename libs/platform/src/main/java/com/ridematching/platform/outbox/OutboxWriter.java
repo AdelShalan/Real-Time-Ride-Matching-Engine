@@ -1,4 +1,4 @@
-package com.ridematching.dispatch.application.port;
+package com.ridematching.platform.outbox;
 
 import com.ridematching.events.DomainEvent;
 

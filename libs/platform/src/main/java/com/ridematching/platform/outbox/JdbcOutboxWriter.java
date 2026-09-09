@@ -1,6 +1,5 @@
-package com.ridematching.dispatch.adapters.out.messaging;
+package com.ridematching.platform.outbox;
 
-import com.ridematching.dispatch.application.port.OutboxWriter;
 import com.ridematching.events.DomainEvent;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import tools.jackson.databind.ObjectMapper;

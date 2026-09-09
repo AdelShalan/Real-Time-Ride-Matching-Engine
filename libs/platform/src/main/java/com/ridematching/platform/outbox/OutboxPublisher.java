@@ -1,4 +1,4 @@
-package com.ridematching.dispatch.adapters.out.messaging;
+package com.ridematching.platform.outbox;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;

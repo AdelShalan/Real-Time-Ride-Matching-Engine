@@ -25,6 +25,38 @@
       <artifactId>micrometer-registry-prometheus</artifactId>
     </dependency>
 
+    <!-- The outbox writes and publishes DomainEvent instances. -->
+    <dependency>
+      <groupId>com.ridematching</groupId>
+      <artifactId>events</artifactId>
+    </dependency>
+
+    <!--
+      Optional for the same reason the Redis client is: the outbox needs JDBC and Kafka, but
+      a service that keeps no durable state should not inherit a datasource just by depending
+      on platform. dispatch-api and trip-service, the two that run an outbox, declare both
+      themselves.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <!-- Jackson 3 (tools.jackson), for serialising the event payload into the outbox row.
+         Every service already has it via starter-web; declared optional so the outbox
+         compiles here without making platform drag a JSON stack into a service that has
+         no use for one. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-json</artifactId>
+      <optional>true</optional>
+    </dependency>
+
     <!-- Optional: ProcessedEvents needs it, but a service with no Kafka consumers should
          not inherit a Redis client just by depending on platform. Consumers declare it
          themselves. -->

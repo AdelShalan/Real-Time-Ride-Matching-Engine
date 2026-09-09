@@ -28,6 +28,7 @@
     <module>libs/events</module>
     <module>libs/geoindex</module>
     <module>libs/platform</module>
+    <module>libs/schema</module>
     <module>services</module>
   </modules>
 
@@ -105,6 +106,11 @@
       <dependency>
         <groupId>com.ridematching</groupId>
         <artifactId>platform</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.ridematching</groupId>
+        <artifactId>schema</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>
